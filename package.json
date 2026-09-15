@@ -1,0 +1,14 @@
+{
+  "name": "obsidian-onedesk",
+  "version": "0.1.0",
+  "description": "All-in-one dashboard plugin for Obsidian",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch --out",
+    "example": "node scripts/build.mjs --example",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "onedesk",
+  "name": "OneDesk",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.10",
+  "description": "All-in-one dashboard for projects, tasks, time tracking, reading, literature, writing and English practice.",
+  "author": "L-WangLi",
+  "authorUrl": "https://github.com/L-WangLi",
+  "isDesktopOnly": false
+}
