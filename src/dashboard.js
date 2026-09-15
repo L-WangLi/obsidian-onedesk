@@ -128,8 +128,8 @@ const _punchMins = {};
 try {
   const _pd = await punchAllDays();
   _pd.forEach((d, i) => {
-    const { spans } = punchDaySpans(_pd, i);
-    _punchMins[d.date] = spans.reduce((a, sp) => a + Math.max(0, hMins(sp[1]) - hMins(sp[0])), 0);
+    const { counted } = punchDaySpans(_pd, i);
+    _punchMins[d.date] = counted.reduce((a, sp) => a + Math.max(0, hMins(sp[1]) - hMins(sp[0])), 0);
   });
 } catch (e) { console.error('punch mins', e); }
 
@@ -4788,25 +4788,35 @@ function punchCarriedRunning(prevList, list, nowMins) {
   return 24 * 60 - hMins(open) + nowMins <= PUNCH_CARRY_MAX ? cat : '';
 }
 
-// Spans for one day of a newest-first day list. A session that runs past midnight belongs
-// wholly to the day it started: it ends there at e.g. 24:53, and the next day starts after it.
+// Spans for one day of a newest-first day list, in two views, the way Toggl treats an entry
+// that crosses midnight:
+//   spans    what to draw — each part on the calendar day it happened (22:10–24:00, then 00:00–00:53);
+//   counted  what to add up — the whole session on the day it started (22:10–24:53), none on the next.
+// A drawn part that belongs to another day carries its real range as a fourth element, for labels.
 function punchDaySpans(days, i) {
-  const cur = days[i]; if (!cur) return { spans: [], open: null, cat: '' };
+  const cur = days[i]; if (!cur) return { spans: [], counted: [], open: null, cat: '', openCarried: false };
   const prev = days[i + 1], next = days[i - 1];
   const carry = (prev && prev.date === dayBefore(cur.date)) ? punchCarry(prev.list, cur.list) : '';
   const r = punchSpans(cur.list, carry);
-  if (carry) {
-    if (r.spans.length && r.spans[0][0] === '00:00') r.spans.shift();
-    else if (r.open === '00:00') { r.open = null; r.cat = ''; }
+  const counted = r.spans.slice();
+  if (carry && r.spans.length && r.spans[0][0] === '00:00') {
+    const started = punchSpans(prev.list).open;
+    r.spans[0] = [...r.spans[0], `${started}–${r.spans[0][1]}⁺¹ · 计入前一天`];
+    counted.shift();
   }
-  if (r.open != null && next && cur.date === dayBefore(next.date)) {
+  // still running from last night: drawn live today, counted on yesterday
+  r.openCarried = !!carry && r.open === '00:00';
+  if (r.open != null && !r.openCarried && next && cur.date === dayBefore(next.date)) {
     const nextCarry = punchCarry(cur.list, next.list);
     const closed = nextCarry ? punchSpans(next.list, nextCarry).spans[0] : null;
     if (closed && closed[0] === '00:00') {
-      r.spans.push([r.open, hPastMidnight(closed[1]), r.cat]);
+      const end = hPastMidnight(closed[1]);
+      r.spans.push([r.open, '24:00', r.cat, `${r.open}–${hShow(end)}`]);
+      counted.push([r.open, end, r.cat]);
       r.open = null; r.cat = '';
     }
   }
+  r.counted = counted;
   return r;
 }
 
@@ -4869,10 +4879,10 @@ const hFmt = m => m < 60 ? m + 'm' : Math.floor(m / 60) + 'h' + (m % 60 ? String
 async function healthDays(limit) {
   const raw = await punchAllDays();
   return raw.slice(0, limit).map((d, i) => {
-    const { spans, open, cat } = punchDaySpans(raw, i);
+    const { spans, counted, open, cat, openCarried } = punchDaySpans(raw, i);
     const wake = d.list.find(p => p.key === 'wake');
-    const worked = spans.reduce((a, sp) => a + Math.max(0, hMins(sp[1]) - hMins(sp[0])), 0);
-    return { date: d.date, path: dailyNotePath(d.date), list: d.list, spans, open, cat, wake: wake ? wake.at : '', worked };
+    const worked = counted.reduce((a, sp) => a + Math.max(0, hMins(sp[1]) - hMins(sp[0])), 0);
+    return { date: d.date, path: dailyNotePath(d.date), list: d.list, spans, counted, open, cat, openCarried, wake: wake ? wake.at : '', worked };
   });
 }
 
@@ -4959,14 +4969,15 @@ async function renderHealth() {
   const nowHM = () => { const n = new Date(); return String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0'); };
   const tLive = (today && today.open != null && hMins(nowHM()) > hMins(today.open)) ? [today.open, nowHM(), today.cat] : null;
   const tSpans = today ? (tLive ? today.spans.concat([tLive]) : today.spans) : [];
-  const blocks = tSpans.map(([s, e, c]) => {
+  const tCounted = today ? (tLive && !today.openCarried ? today.counted.concat([tLive]) : today.counted) : [];
+  const blocks = tSpans.map(([s, e, c, real]) => {
     const cat = PUNCH_CAT(c) || { label: 'Untagged', bg: 'var(--bg4)', fg: 'var(--text3)' };
     const w = hzPct(e) - hzPct(s);
     const live = tLive && tLive[0] === s && tLive[1] === e;
-    return `<span class="hz-blk${live ? ' hz-live' : ''}" style="left:${hzPct(s)}%;width:${w}%;background:${cat.bg};color:${cat.fg}" title="${esc(cat.label + ' ' + s + '–' + hShow(e) + (live ? ' · running' : ''))}">` +
-      (w > 8 ? `<b>${esc(cat.label)}</b><i>${s}–${hShow(e)}</i>` : '') + `</span>`;
+    return `<span class="hz-blk${live ? ' hz-live' : ''}" style="left:${hzPct(s)}%;width:${w}%;background:${cat.bg};color:${cat.fg}" title="${esc(cat.label + ' ' + (real || s + '–' + e) + (live ? ' · running' : ''))}">` +
+      (w > 8 ? `<b>${esc(cat.label)}</b><i>${esc(real || s + '–' + e)}</i>` : '') + `</span>`;
   }).join('');
-  const tCats = catMins(tSpans);
+  const tCats = catMins(tCounted);
   const tTotal = Object.values(tCats).reduce((a, b) => a + b, 0);
   const tOut = today ? [...today.list].reverse().find(p => p.key === 'out') : null;
   const tEnd = tOut ? tOut.at : '';
@@ -5001,13 +5012,12 @@ async function renderHealth() {
   const wkDays = Array.from({ length: 7 }, (_, i) => {
     const dt = new Date(wkMon); dt.setDate(wkMon.getDate() + i);
     const key = wkKey(dt);
-    return wkIndex[key] || { date: key, spans: [], worked: 0, list: [], wake: '', path: dailyNotePath(key) };
+    return wkIndex[key] || { date: key, spans: [], counted: [], worked: 0, list: [], wake: '', path: dailyNotePath(key) };
   });
   const wkRange = wkDays[0].date.slice(5).replace('-', '/') + ' – ' + wkDays[6].date.slice(5).replace('-', '/');
   const WK_H = 26;   // px per hour
   const wkHours = []; for (let h = HZ_LO / 60; h < HZ_HI / 60; h++) wkHours.push(h);
-  // the grid ends at 24:00; a session past midnight is drawn to there and labelled with its real end
-  const wkTop = t => ((Math.min(hMins(t), HZ_HI) - HZ_LO) / 60) * WK_H;
+  const wkTop = t => ((hMins(t) - HZ_LO) / 60) * WK_H;
   const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const weekCard = `<div class="card rp-card">
     <div class="card-title">This week
@@ -5019,13 +5029,13 @@ async function renderHealth() {
       </div>
       ${wkDays.map(d => {
         const dt = new Date(d.date + 'T00:00');
-        const blocks = d.spans.map(([s2, e2, c2]) => {
+        const blocks = d.spans.map(([s2, e2, c2, real]) => {
           const cat = PUNCH_CAT(c2) || { label: 'Untagged', bg: 'var(--bg4)', fg: 'var(--text3)' };
           const top = wkTop(s2), hgt = Math.max(14, wkTop(e2) - top);
           return `<div class="hz-cale" style="top:${top}px;height:${hgt}px;background:${cat.bg};color:${cat.fg}"` +
-            ` title="${esc(cat.label + ' ' + s2 + '–' + hShow(e2))}">` +
+            ` title="${esc(cat.label + ' ' + (real || s2 + '–' + e2))}">` +
             `<b>${esc(cat.label)}</b>` +
-            (hgt > 34 ? `<i>${s2}–${hShow(e2)}</i>` : '') +
+            (hgt > 34 ? `<i>${esc(real || s2 + '–' + e2)}</i>` : '') +
             (hgt > 52 ? `<u>${hFmt(hMins(e2) - hMins(s2))}</u>` : '') + `</div>`;
         }).join('');
         const isToday = d.date === todayStr();
@@ -5044,15 +5054,16 @@ async function renderHealth() {
   const logWindow = Array.from({ length: LOG_DAYS }, (_, i) => {
     const dt = new Date(); dt.setDate(dt.getDate() - i);
     const key = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
-    return logIndex[key] || { date: key, spans: [], worked: 0, list: [], wake: '', path: dailyNotePath(key) };
+    return logIndex[key] || { date: key, spans: [], counted: [], worked: 0, list: [], wake: '', path: dailyNotePath(key) };
   });
   const logRows = logWindow.map(d => {
-    const first = d.spans.length ? d.spans[0][0] : '';
-    const last = d.spans.length ? d.spans[d.spans.length - 1][1] : '';
-    const gross = d.spans.length ? hMins(last) - hMins(first) : 0;
+    const cnt = d.counted || [];
+    const first = cnt.length ? cnt[0][0] : '';
+    const last = cnt.length ? cnt[cnt.length - 1][1] : '';
+    const gross = cnt.length ? hMins(last) - hMins(first) : 0;
     const brk = gross > d.worked ? gross - d.worked : 0;
-    const bars = d.spans.map(([s2, e2, c2]) =>
-      `<span class="hz-sb" style="left:${hzPct(s2)}%;width:${hzPct(e2) - hzPct(s2)}%;background:${(PUNCH_CAT(c2) || {}).color || 'var(--m-grey)'}" title="${esc((PUNCH_CAT(c2) || {}).label || '')} ${s2}–${hShow(e2)}"></span>`).join('');
+    const bars = d.spans.map(([s2, e2, c2, real]) =>
+      `<span class="hz-sb" style="left:${hzPct(s2)}%;width:${hzPct(e2) - hzPct(s2)}%;background:${(PUNCH_CAT(c2) || {}).color || 'var(--m-grey)'}" title="${esc((PUNCH_CAT(c2) || {}).label || '')} ${real || s2 + '–' + e2}"></span>`).join('');
     return `<div class="hz-lrow${d.spans.length ? '' : ' hz-lempty'}" data-action="punch-edit" data-date="${esc(d.date)}" title="${esc(d.date)} · 打开记录改这一天">
       <span class="hz-ld">${d.date.slice(5).replace('-', '/')}</span>
       <span class="hz-strack">${bars}</span>
@@ -5078,17 +5089,17 @@ async function renderHealth() {
   let inFocus = 0, switches = 0;
   const byCat = {};
   for (const d of days) {
-    for (const [s, e, c] of d.spans) {
+    for (const [s, e, c] of d.counted) {
       const a = hMins(s), b = hMins(e);
       byCat[c || 'other'] = (byCat[c || 'other'] || 0) + Math.max(0, b - a);
       if (DEEP.includes(c)) for (const f of focus)
         inFocus += Math.max(0, Math.min(b, hMins(f.to)) - Math.max(a, hMins(f.from)));
     }
-    for (let i = 1; i < d.spans.length; i++)
-      if (d.spans[i][2] && d.spans[i][2] !== d.spans[i - 1][2]) switches++;
+    for (let i = 1; i < d.counted.length; i++)
+      if (d.counted[i][2] && d.counted[i][2] !== d.counted[i - 1][2]) switches++;
   }
   const focusAvail = focus.reduce((a, f) => a + (hMins(f.to) - hMins(f.from)), 0) * days.length;
-  const lags = days.filter(d => d.wake && d.spans.length).map(d => hMins(d.spans[0][0]) - hMins(d.wake)).filter(v => v >= 0);
+  const lags = days.filter(d => d.wake && d.counted.length).map(d => hMins(d.counted[0][0]) - hMins(d.wake)).filter(v => v >= 0);
   const wd = [], we = [];
   for (const d of days) { if (!d.wake) continue; const dow = new Date(d.date + 'T00:00').getDay(); (dow === 0 || dow === 6 ? we : wd).push(hMins(d.wake)); }
   const jet = (wd.length && we.length) ? Math.abs(mean(we) - mean(wd)) : null;
@@ -5113,7 +5124,7 @@ async function renderHealth() {
   };
   const dayDeep = d => {
     let m = 0;
-    for (const [s2, e2, c2] of d.spans) if (DEEP.includes(c2))
+    for (const [s2, e2, c2] of d.counted) if (DEEP.includes(c2))
       for (const f of focus) m += Math.max(0, Math.min(hMins(e2), hMins(f.to)) - Math.max(hMins(s2), hMins(f.from)));
     return Math.round(m / focusPerDay * 100);
   };
@@ -5126,16 +5137,16 @@ async function renderHealth() {
     stat(wakes.length ? clock(mean(wakes)) : '—', 'Avg wake', false, spark(series.map(d => d.wake ? hMins(d.wake) : null))) +
     stat(wakes.length > 1 ? '±' + Math.round(sd(wakes)) + 'm' : '—', 'Wake spread') +
     stat(lags.length ? Math.round(mean(lags)) + 'm' : '—', 'Wake → start', false,
-      spark(series.map(d => (d.wake && d.spans.length) ? hMins(d.spans[0][0]) - hMins(d.wake) : null))) +
+      spark(series.map(d => (d.wake && d.counted.length) ? hMins(d.counted[0][0]) - hMins(d.wake) : null))) +
     stat(days.length ? (switches / days.length).toFixed(1) : '—', 'Switches / day', false,
-      spark(series.map(d => d.spans.filter((sp, i) => i && sp[2] && sp[2] !== d.spans[i - 1][2]).length))) +
+      spark(series.map(d => d.counted.filter((sp, i) => i && sp[2] && sp[2] !== d.counted[i - 1][2]).length))) +
     stat(jet == null ? '—' : Math.round(jet) + 'm', 'Social jetlag');
 
   const HZ_PERIODS = [['day', 'Today', 1], ['week', 'Week', 7], ['month', 'Month', 30]];
   const pKey = ['day', 'week', 'month'].includes(String(LS('hz_period', 'week'))) ? String(LS('hz_period', 'week')) : 'week';
   const pDays = all.slice(0, (HZ_PERIODS.find(p => p[0] === pKey) || [, , 7])[2]);
   const pCat = {};
-  for (const d of pDays) for (const [s2, e2, c2] of d.spans)
+  for (const d of pDays) for (const [s2, e2, c2] of d.counted)
     pCat[c2 || 'other'] = (pCat[c2 || 'other'] || 0) + Math.max(0, hMins(e2) - hMins(s2));
   const pTotal = Object.values(pCat).reduce((a, b) => a + b, 0) || 1;
   const pTabs = HZ_PERIODS.map(([k, lbl]) =>
