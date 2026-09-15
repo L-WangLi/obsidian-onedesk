@@ -3594,9 +3594,12 @@ const WT_CUE = {
   limitation: /\b(limitations?|shortcomings?|future work|in (?:the )?future|does not (?:consider|account for)|beyond the scope|remains? to be)\b/gi,
 };
 
-// "Operating-conditions" and "operating condition" are one term.
+// "Operating-conditions" and "operating condition" are one term. No regex lookbehind in this
+// file: iPadOS WebKit before 16.4 cannot parse it, and one such literal stops the whole plugin loading.
 const wtNorm = s => String(s).toLowerCase().replace(/[-‐–]/g, ' ').replace(/\s+/g, ' ').trim()
-  .replace(/(\w{3,}?)(?<!s|i|u)s$/, '$1');
+  .replace(/(\w{2,}?[^\Wsiu])s$/, '$1');
+// Split into sentences after a full stop that is followed by a capital, keeping the stop.
+const wtSentences = (text, before) => text.replace(new RegExp('(' + before + '[.])\\s+(?=[A-Z])', 'g'), '$1\u0000').split('\u0000');
 
 async function wtBuildIndex(env) {
   const { fs, path, storage, sql, root, manual = [], prev = null, today, pause = async () => {} } = env;
@@ -3667,7 +3670,7 @@ async function wtBuildIndex(env) {
     if (p == null) { nR++; countGrams(t.toLowerCase(), gramsR); continue; }
     nP++;
     countGrams(t.toLowerCase(), gramsP);
-    for (const raw of t.split(/(?<=[a-z0-9)\]][.])\s+(?=[A-Z])/)) { const s = clean(raw); if (s) sents.push({ s, p }); }
+    for (const raw of wtSentences(t, '[a-z0-9)\\]]')) { const s = clean(raw); if (s) sents.push({ s, p }); }
     const seen = new Set();
     for (const m of t.matchAll(/\b((?:[A-Za-z][a-z]+[ -]){0,5}[A-Za-z][a-z]+) \(([A-Z][A-Za-z0-9]{1,7})\)/g)) {
       const acr = m[2].replace(/s$/, ''), L = acr.replace(/[^A-Z]/g, '');
@@ -3860,7 +3863,7 @@ async function wtBuildIndex(env) {
   };
   for (const p of papers) {
     if (!p.a) continue;
-    for (const raw of p.a.replace(/\s+/g, ' ').split(/(?<=[.])\s+(?=[A-Z])/)) {
+    for (const raw of wtSentences(p.a.replace(/\s+/g, ' '), '')) {
       const s = raw.trim().replace(CITE, '').replace(/\s+([,.;])/g, '$1');
       if (s.length >= 70 && s.length <= 260 && !BAD.test(s) && /\.$/.test(s)) consider(s, pIndex[p.id]);
     }

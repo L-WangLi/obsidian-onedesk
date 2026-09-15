@@ -240,3 +240,39 @@ test("schedule blocks are classified from English labels too", () => {
   for (const label of ["午休", "Lunch", "Nap", "Exercise", "Rest"]) assert.ok(rest.test(label), label);
   assert.ok(!rest.test("Interest reading"));
 });
+
+// iPadOS WebKit before 16.4 rejects regex lookbehind at parse time, and the plugin is one file:
+// a single such literal means "failed to load plugin" on those iPads.
+test("the bundle parses on older iPad WebKit: no regex lookbehind", () => {
+  const hits = source.split("\n").filter(l => /\(\?<[=!]/.test(l));
+  assert.deepEqual(hits, []);
+});
+
+test("sentence splitting and term folding match the former lookbehind versions", () => {
+  const grab = name => {
+    const line = dashboardSource.split("\n").find(l => l.startsWith(`const ${name} =`));
+    const next = dashboardSource.split("\n")[dashboardSource.split("\n").indexOf(line) + 1];
+    return vm.runInNewContext(`(${(line + (line.trim().endsWith(";") ? "" : next)).replace(/^const \w+ = /, "").replace(/;\s*$/, "")})`);
+  };
+  const wtNorm = grab("wtNorm"), wtSentences = grab("wtSentences");
+  const oldNorm = s => String(s).toLowerCase().replace(/[-‐–]/g, " ").replace(/\s+/g, " ").trim().replace(/(\w{3,}?)(?<!s|i|u)s$/, "$1");
+  for (const w of ["Operating-conditions", "networks", "analysis", "status", "focus", "bus", "gas", "class", "data sets", "LSTMs", "axis", "cats"])
+    assert.equal(wtNorm(w), oldNorm(w), w);
+  const text = "We use RUL (see [3]). The model works. Results improve by 5.2 percent. Fig. 2 shows it. e.g. Some text? Yes. End (2020). Next one.";
+  assert.deepEqual([...wtSentences(text, "[a-z0-9)\\]]")], text.split(/(?<=[a-z0-9)\]][.])\s+(?=[A-Z])/));
+  const abs = "First sentence. Second one here. Third? Fourth. v1.2 Stays. A.B. Cde.";
+  assert.deepEqual([...wtSentences(abs, "")], abs.split(/(?<=[.])\s+(?=[A-Z])/));
+});
+
+test("plugin still loads on an Obsidian without AbstractInputSuggest", async () => {
+  const { loadMain: load } = await import("./obsidian-mock.mjs");
+  const mod = await import("./obsidian-mock.mjs");
+  const app = mod.makeApp();
+  // same bundle, with the suggest base class missing from the API
+  const { Plugin } = load(source.replace('AbstractInputSuggest, Component,', 'Component,'), { AbstractInputSuggest: undefined });
+  const plugin = new Plugin(app, { id: "onedesk" });
+  await plugin.onload();
+  for (const cb of app.layoutCallbacks) await cb();
+  await plugin.ready;
+  assert.ok(plugin.settings);
+});

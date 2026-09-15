@@ -1,6 +1,6 @@
 {
   "name": "obsidian-onedesk",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "All-in-one dashboard plugin for Obsidian",
   "private": true,
   "type": "module",

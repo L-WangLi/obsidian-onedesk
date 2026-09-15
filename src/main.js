@@ -376,7 +376,9 @@ class SampleNotesModal extends Modal {
   }
 }
 
-class FolderSuggest extends AbstractInputSuggest {
+// Folder autocomplete needs AbstractInputSuggest (Obsidian 1.4.10+). On an older app — common on
+// older iPads — the settings fields stay plain text boxes instead of the plugin failing to load.
+const FolderSuggest = AbstractInputSuggest ? class extends AbstractInputSuggest {
   constructor(app, inputEl) {
     super(app, inputEl);
     this.inputEl = inputEl;
@@ -398,7 +400,7 @@ class FolderSuggest extends AbstractInputSuggest {
     this.inputEl.dispatchEvent(new Event("input"));
     this.close();
   }
-}
+} : null;
 
 class OneDeskSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
@@ -472,7 +474,7 @@ class OneDeskSettingTab extends PluginSettingTab {
             else delete s.vault[key];
             this.queueSave();
           });
-          if (!["HOME", "ZOT_COLL", "ZOT_ROOT"].includes(key)) new FolderSuggest(this.app, t.inputEl);
+          if (FolderSuggest && !["HOME", "ZOT_COLL", "ZOT_ROOT"].includes(key)) new FolderSuggest(this.app, t.inputEl);
         });
     }
 
