@@ -38,7 +38,7 @@ Browse folders and recent notes; the preview on the right is editable.
 ![Files](docs/screenshots/03-files.webp)
 
 ### Literature
-Papers imported from a Zotero collection, with highlights, reading sessions and status.
+Papers imported from a Zotero collection, with highlights, reading sessions and status. See [Literature in detail](#literature-in-detail).
 
 ![Literature](docs/screenshots/04-literature.webp)
 
@@ -109,6 +109,60 @@ OneDesk has no database. Every card is a view over ordinary notes, using these c
 
 If the core **Daily notes** plugin is enabled, its folder and date format decide where daily notes live.
 
+## Literature in detail
+
+Highlighting stays in Zotero; thinking happens in Obsidian. The Literature tab turns one Zotero collection into reading notes you can scan, search by tag, and grow into a related-work draft.
+
+### Setting it up (desktop)
+
+1. Use Zotero 6 or 7 with its default data folder, `~/Zotero`.
+2. Make sure the `sqlite3` command-line tool is installed. It ships with macOS; on Linux install it from your package manager. Windows is not supported yet.
+3. Put the papers you are reading into one collection, and enter its **exact name** in Settings → OneDesk → *Zotero 合集*. Subcollections are not included.
+4. Press **Sync Zotero** on the Literature tab.
+
+OneDesk reads a temporary copy of Zotero's database, so Zotero can stay open. Nothing is ever written back to Zotero.
+
+### What a sync writes
+
+**One note per paper** in `Sources/Reading/Zotero/`, named after the title. The frontmatter holds `title`, `authors`, `year`, `venue`, `doi`, `zotero_key`, a `status` (`unread`, `read`, or `deep` from 20 highlights up), counts of `highlights` and `figures`, `last_read`, and `sessions` — one line per day you annotated the paper. The body, top to bottom:
+
+| Section | Contents |
+| --- | --- |
+| Header | Authors · year · venue, with links to open the item in Zotero and to its DOI |
+| **速览** (at a glance) | A four-row table — problem, method, dataset, result — filled from highlights tagged `gap` / `research gap`, `method`, `dataset`, `result` (Chinese equivalents work too). A row you typed yourself is kept until a tagged highlight fills it. |
+| **图表** (figures) | Every rectangle you drew over a figure or table, copied into `_figures/<zotero key>/` and captioned from the PDF text (`Fig. 2. …`). Grouped into method, experiments and results by caption keywords. |
+| **我划的句子** (highlights) | Your highlights grouped under the paper's own sections — Abstract, Introduction, Related work, Method, Experiments, Results, Discussion, Conclusion — detected from Zotero's full-text cache. Each shows its tags, page, and a link that jumps to that exact spot in the PDF. Sticky notes appear in place among them. |
+| 素材 (raw material) | A collapsed callout listing the gap and method sentences and everything you wrote about the paper |
+| **综述段落** (synthesis) and **我的话** (my words) | Yours. Write a paragraph for your related-work section here. |
+
+On highlights:
+
+- Short tags (up to 16 characters, with no comma, period or semicolon) are treated as labels. Anything longer typed into the tag box is treated as a note and shown as **我：** under the sentence.
+- Text you type in an annotation's comment also appears as **我：**. If a translation plugin stores its translation in the comment between `🔤` marks, that part is shown as a faint translation line instead.
+
+**Your writing is never overwritten.** Everything from `## 综述段落` to the end of a note is carried over unchanged on every sync. Notes are matched by `zotero_key`, so renaming a paper in Zotero renames its note without losing what you wrote. Deleting an image annotation in Zotero removes its picture from the vault.
+
+**`Sources/Reading/Thoughts.md`** collects everything *you* wrote in Zotero — sticky notes, your own words in annotation comments, and child notes — grouped by paper, most recently written first. Notes you didn't write (reading-time plugin data, arXiv comments, TL;DRs, notes generated from annotations that only repeat the highlights) are left out. This file is rewritten on each sync, so edit those notes in Zotero.
+
+If a figure shows *Zotero hasn't rendered this image yet*, open that annotation once in Zotero and sync again.
+
+### The five views
+
+| View | What it shows |
+| --- | --- |
+| **Papers** | Every paper with its status (New / Read / Deep), authors, year, venue, highlight count and last read date |
+| **Timeline** | Each day you annotated each paper, and how many highlights you made |
+| **Tags** | All highlights across the collection, grouped by tag, plus an *Untagged* group. Each shows the paper, section, page, translation and your notes, with links to the note and to the spot in the PDF. |
+| **Synthesis** | Every *综述段落* you have written, oldest paper first — a related-work draft you can copy in one click — followed by the papers you have highlighted but not yet written about |
+| **Notes** | `Thoughts.md` read back |
+
+### Used by other tabs
+
+- **English** — on long-sentence days, the prompt uses English sentences you highlighted that carry a translation.
+- **Writing** — *Research writing* builds its term and phrase index from the full text of papers in the collection set as *写作素材合集* (subcollections included). It reads Zotero only after that setting is filled in.
+
+A tagging habit that makes every view useful: while reading, tag the sentence stating the problem `gap`, the method `method`, the data `dataset`, and the main finding `result`.
+
 ## Settings
 
 - **Name, open on startup**
@@ -133,7 +187,7 @@ Many sync tools don't carry a plugin's own `data.json`. Click **创建配置文�
 
 ## Desktop-only parts
 
-- **Zotero sync** on the Literature tab reads Zotero's database through the `sqlite3` command-line tool, found in `/usr/bin`, `/opt/homebrew/bin` or `/usr/local/bin` (macOS and Linux). Notes it creates can be read on any device.
+- **Zotero sync** on the Literature tab reads Zotero's database through the `sqlite3` command-line tool, found in `/usr/bin`, `/opt/homebrew/bin` or `/usr/local/bin` (macOS and Linux). The notes it creates, and every Literature view, work on any device.
 - **Research writing** on the Writing tab builds its phrase index from the Zotero collection set in settings (写作素材合集). Zotero is not read until that is set, and the index, once built, can be used on mobile.
 - Everything else works on mobile.
 
