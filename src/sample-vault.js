@@ -27,7 +27,8 @@ function onedeskSampleFiles(now) {
     "- **首页横幅**：`Media/banner.svg`（附件文件夹里任意 banner.jpg / png / svg 都可以）",
     "- **倒数日**：`Console/Dates.md`；**等待清单**：`Intake/Pending.md`；**想做清单**：`Scratch/Later.md`",
     "- **阅读**：`Shelf/` 中的读书笔记（📌 划线、💭 想法）",
-    "- **文献**：`Sources/Reading/Zotero/`，frontmatter 带 `type: paper`",
+    "- **文献**：`Sources/Reading/Zotero/` 里 6 篇虚构论文（格式与 Zotero 同步生成的一致），带 gap / method / dataset / result 标签、译文和批注",
+    "- **文献合集**：`Sources/Reading/` 下的「Gap 合集」「文献矩阵」「标签合集」「综述草稿」；在文献页点「更新合集」会重新生成",
     "- **英语 / 写作练习**：`Drills/`；**公开写作**：`Workstreams/Writing/Articles/`",
     "",
     "看完可以整批删除，换成你自己的笔记。",
@@ -382,43 +383,198 @@ function onedeskSampleFiles(now) {
   ]);
 
   // ── literature ──
-  const paper = (name, meta, body) => add(`Sources/Reading/Zotero/${name}.md`, ["---", ...meta, "---", "", `# ${name}`, "", ...body]);
-  paper("A Sample Study of Note-Taking Habits", [
-    "type: paper",
-    "authors: \"A. Example; B. Sample\"",
-    "year: 2024",
-    "venue: \"Journal of Imaginary Studies\"",
-    "highlights: 3",
-    `last_read: ${day(-2)}`,
-    "status: reading",
-    "sessions:",
-    `  - "${day(-5)} · 2"`,
-    `  - "${day(-2)} · 1"`,
-    "zotero_key: SAMPLE01",
-  ], ["> 虚构的示例论文，用来展示文献页的列表与阅读记录。", "", "## 我划的句子", "",
-    "- Participants who reviewed their notes weekly recalled more of the material.", "",
-    "## 综述段落", "", "这项研究说明定期回顾比记录本身更重要。"]);
-  paper("Designing Calm Dashboards", [
-    "type: paper",
-    "authors: \"C. Placeholder\"",
-    "year: 2023",
-    "venue: \"Proceedings of the Sample Conference\"",
-    "highlights: 1",
-    `last_read: ${day(-8)}`,
-    "status: read",
-    "sessions:",
-    `  - "${day(-8)} · 1"`,
-    "zotero_key: SAMPLE02",
-  ], ["> 虚构的示例论文。", "", "## 综述段落", "", "一个好的仪表盘应该让人少做决定。"]);
-  add("Sources/Reading/Thoughts.md", [
+  // Six fictional papers written exactly the way a Zotero sync writes them, so every
+  // Literature view and the four collection notes have something to show.
+  const LIT_DIR = "Sources/Reading";
+  const ZOT_DIR = `${LIT_DIR}/Zotero`;
+  const faint = s => `<small style="color:var(--text-faint)">${s}</small>`;
+  const paperNote = p => {
+    const quotes = Object.values(p.sections || {}).flat();
+    const cite = (tag) => quotes.find(q => q.tags.includes(tag) || (tag === "gap" && q.tags.some(t => ["research gap", "问题"].includes(t))));
+    const brief = [["gap", "想解决的问题"], ["method", "方法"], ["dataset", "数据集"], ["result", "结果"]].map(([tag, label]) => {
+      const q = cite(tag) || (tag === "result" && quotes.find(x => x.tags.includes("results")));
+      return `| **${label}** | ${q ? (q.zh || q.text) : ""} |`;
+    });
+    const fm = ["---", "type: paper", "collection: My Collection", `zotero_key: ${p.key}`, `title: ${JSON.stringify(p.title)}`,
+      `authors: ${JSON.stringify(p.authors)}`, `year: ${p.year}`, `venue: ${JSON.stringify(p.venue)}`, 'doi: ""',
+      `status: ${quotes.length ? "read" : "unread"}`, `highlights: ${quotes.length}`, "figures: 0",
+      `last_read: ${p.sessions.length ? day(p.sessions[0][0]) : '""'}`, `added: ${day(-45)}`,
+      p.sessions.length ? "sessions:\n" + p.sessions.map(([d, n]) => `  - "${day(d)} · ${n}"`).join("\n") : "sessions: []",
+      `topics: [${p.topics.join(", ")}]`, "related_concepts: []", "---"];
+    const head = ["", `# ${p.title}`, "", `${p.authors} · ${p.year} · ${p.venue}　[在 Zotero 中打开](zotero://select/library/items/${p.key})`];
+    let body;
+    if (!quotes.length) {
+      body = ["", "## 摘要", "", p.abstract, "", "> [!info] 还没读", "> 这篇在 My Collection 里，但一条划线都没有。", ""];
+    } else {
+      body = ["", "## 速览", "", "| | |", "|---|---|", ...brief, "", `## 我划的句子 · ${quotes.length} 条`];
+      let n = 0;
+      for (const [section, list] of Object.entries(p.sections)) {
+        body.push("", `### ${section}　<small>${list.length}</small>`, "");
+        for (const q of list) {
+          n++;
+          const link = `zotero://open-pdf/library/items/${p.key}A?annotation=${p.key}${String(n).padStart(2, "0")}`;
+          body.push([q.tags.map(t => "`" + t + "`").join(" "), `**p.${q.page}**`, `[↗](${link})`].filter(Boolean).join("　"));
+          body.push("> " + q.text);
+          if (q.zh) body.push("> " + faint(q.zh));
+          for (const m of q.mine || []) body.push("> **我：** " + m);
+          body.push("");
+        }
+      }
+    }
+    const tail = ["## 综述段落", "", p.essay || "", "", "## 我的话", "", "- 和我自己的工作是什么关系？", "- 存疑 / 不同意的地方？", "- 想到的下一步？", ""];
+    return [...fm, ...head, ...body, "", ...tail].join("\n");
+  };
+
+  const papers = [
+    {
+      key: "SMPL0001", year: 2024, topics: ["复习与记忆"], sessions: [[-3, 2], [-9, 3]],
+      title: "Spaced Review of Research Notes Improves Long-Term Retention",
+      authors: "Example, Sample, Demo", venue: "Journal of Imaginary Learning Studies",
+      sections: {
+        "引言 · Introduction": [
+          { tags: ["gap"], page: 2, text: "Most studies of note-taking measure recall within a week, leaving the long-term value of revisiting research notes largely unexamined.",
+            zh: "多数笔记研究只测一周内的回忆，重读研究笔记的长期价值基本没有被考察。", mine: ["我的课题正好可以补这一块：跨学期追踪。"] },
+        ],
+        "方法 · Method": [
+          { tags: ["method"], page: 4, text: "We asked 120 graduate students to review their reading notes on an expanding schedule of one, seven and thirty days.",
+            zh: "我们让 120 名研究生按 1、7、30 天的递增间隔复习阅读笔记。" },
+          { tags: ["dataset"], page: 5, text: "Participants came from six departments, and each contributed at least forty annotated papers over one semester.",
+            zh: "参与者来自六个院系，每人一学期内至少标注了四十篇论文。" },
+        ],
+        "结果 · Results": [
+          { tags: ["result"], page: 8, text: "Students on the spaced schedule recalled twice as many key claims after three months as those who reread only before deadlines.",
+            zh: "三个月后，按间隔复习的学生能回忆起的关键论点是只在截止前重读者的两倍。" },
+          { tags: ["limitation"], page: 10, text: "Our sample was limited to a single university, so the size of the effect may depend on the local research culture.",
+            zh: "样本只来自一所大学，效果大小可能受当地科研文化影响。", mine: ["可以作为研究设计里要控制的变量。"] },
+        ],
+      },
+      essay: "Example 等人发现，按递增间隔复习阅读笔记能显著提升三个月后的关键论点回忆，但样本局限于单一院校，也没有考察笔记本身的质量。",
+    },
+    {
+      key: "SMPL0002", year: 2023, topics: ["个人知识管理"], sessions: [[-12, 4]],
+      title: "Linking Notes: A Field Study of Personal Knowledge Graphs",
+      authors: "Placeholder, Mock", venue: "Proceedings of the Sample Conference on Knowledge Work",
+      sections: {
+        "引言 · Introduction": [
+          { tags: ["research gap"], page: 1, text: "Although linking tools are widely adopted, little is known about whether links created while reading are ever followed again.",
+            zh: "尽管链接工具被广泛使用，但阅读时建立的链接是否会被再次访问，几乎没有研究。" },
+        ],
+        "方法 · Method": [
+          { tags: ["method"], page: 3, text: "We logged the link activity of 48 researchers for six months and interviewed them about the notes they went back to.",
+            zh: "我们记录了 48 名研究者六个月的链接行为，并访谈了他们重访过的笔记。" },
+        ],
+        "结果 · Results": [
+          { tags: ["results"], page: 7, text: "Only a fifth of links were ever followed, yet notes with three or more backlinks were reopened far more often than the rest.",
+            zh: "只有五分之一的链接被再次点开，但拥有三个以上反向链接的笔记被重新打开的次数明显更多。", mine: ["说明「被引用得多」比「链接得多」更重要。"] },
+        ],
+        "讨论 · Discussion": [
+          { tags: ["future work"], page: 9, text: "Future tools could surface notes that have many backlinks but have not been opened for several weeks.",
+            zh: "未来的工具可以主动推送反向链接多、但几周未打开的笔记。" },
+        ],
+      },
+      essay: "Placeholder 与 Mock 的六个月追踪显示，大部分阅读时建立的链接从未被再次点开，但反向链接较多的笔记更常被重访，提示知识管理工具应关注笔记被引用的程度，而非链接的数量。",
+    },
+    {
+      key: "SMPL0003", year: 2022, topics: ["个人知识管理", "研究生学习"], sessions: [[-20, 3]],
+      title: "Why Graduate Students Abandon Reading Logs",
+      authors: "Demo", venue: "Fictional Review of Higher Education",
+      sections: {
+        "引言 · Introduction": [
+          { tags: ["问题"], page: 2, text: "Reading logs are recommended in most research methods courses, yet few students keep them going beyond their first term.",
+            zh: "多数研究方法课程都推荐写阅读日志，但很少有学生能坚持到第一学期之后。" },
+        ],
+        "结果 · Results": [
+          { tags: ["result"], page: 6, text: "The most common reason for stopping was that entries were never read again, so writing them felt like wasted effort.",
+            zh: "停止记录最常见的原因是写下的内容从不被再读，因此觉得是白费力气。", mine: ["和 Placeholder & Mock 2023 的结论互相印证。"] },
+        ],
+        "结论 · Conclusion": [
+          { tags: ["implication"], page: 8, text: "Logs that fed directly into a thesis chapter were kept far longer than logs that were written only for their own sake.",
+            zh: "能直接用进论文章节的日志，比单纯为记录而写的日志坚持得久得多。" },
+        ],
+      },
+      essay: "Demo 的访谈指出，研究生放弃阅读日志的主要原因是记录从未被再次使用；与学位论文写作直接挂钩的日志则能长期保持。",
+    },
+    {
+      key: "SMPL0004", year: 2025, topics: ["复习与记忆"], sessions: [[-2, 3]],
+      title: "Annotation Density and the Later Reuse of Highlights",
+      authors: "Sample, Example", venue: "Imaginary Transactions on Reading",
+      sections: {
+        "引言 · Introduction": [
+          { tags: ["gap"], page: 1, text: "Prior work treats every highlight as equal, without asking which highlights are later quoted in the reader's own writing.",
+            zh: "以往研究把所有划线视为同等，没有追问哪些划线后来被读者引用进自己的写作。" },
+        ],
+        "方法 · Method": [
+          { tags: ["method"], page: 3, text: "We matched 9,000 highlights against the drafts their authors later wrote, using sentence embeddings to detect reuse.",
+            zh: "我们用句向量把 9000 条划线与作者之后写的草稿匹配，以识别复用。" },
+          { tags: ["dataset"], page: 4, text: "The corpus combines highlights and drafts from 85 master's theses that were written between 2019 and 2023.",
+            zh: "语料由 2019 至 2023 年间 85 篇硕士论文的划线与草稿组成。" },
+        ],
+      },
+      essay: "",
+    },
+    {
+      key: "SMPL0005", year: 2021, topics: ["仪表盘设计"], sessions: [[-30, 2]],
+      title: "Calm Dashboards for Personal Self-Tracking",
+      authors: "Placeholder", venue: "Sample Journal of Interaction Design",
+      sections: {
+        "引言 · Introduction": [
+          { tags: ["gap"], page: 2, text: "Self-tracking dashboards often maximise the number of metrics on screen, even though users report feeling judged by them.",
+            zh: "个人追踪仪表盘往往尽量多地展示指标，尽管用户表示会因此感到被评判。" },
+        ],
+        "结果 · Results": [
+          { tags: ["result"], page: 6, text: "Participants preferred a view that showed fewer numbers and more recent activity, and they opened it more often.",
+            zh: "参与者更喜欢数字更少、近期活动更多的视图，而且打开得更频繁。" },
+        ],
+      },
+      essay: "Placeholder 比较了不同信息密度的自我追踪界面，发现数字更少、强调近期活动的「平静」界面更受欢迎，使用频率也更高。",
+    },
+    {
+      key: "SMPL0006", year: 2020, topics: [], sessions: [],
+      title: "A Survey of Literature Management Tools",
+      authors: "Mock, Demo, Example", venue: "Imaginary Computing Surveys",
+      abstract: "This fictional survey compares reference managers by how they support reading, annotating and writing.",
+      essay: "",
+    },
+  ];
+  for (const p of papers) add(`${ZOT_DIR}/${p.title}.md`, [paperNote(p)]);
+
+  add(`${LIT_DIR}/Thoughts.md`, [
     "# Thoughts",
     "",
-    "> 文献页从 Zotero 同步时会重写这个文件；示例中是手写的。",
+    "> Zotero 同步生成：你在 Zotero 里写的便签、批注和笔记，按论文归档，最近写过的排在前面。",
+    "> 这里每次同步都会整篇重写 —— 要改请在 Zotero 里改。",
     "",
-    "## A Sample Study of Note-Taking Habits",
+    `## ${papers[0].title}`,
     "",
-    "- 可以在自己的笔记系统里验证一下：每周回顾一次，看能不能记得更牢。",
+    `[[${ZOT_DIR}/${papers[0].title}|文献笔记]] · 2024 · 2 条 · 最近 ${day(-3)}`,
+    "",
+    `### p.2 · 划线批注 · ${day(-9).slice(5)}　[↗](zotero://open-pdf/library/items/SMPL0001A?annotation=SMPL000101)`,
+    "",
+    "> Most studies of note-taking measure recall within a week, leaving the long-term value of revisiting research notes largely unexamined.",
+    "",
+    "我的课题正好可以补这一块：跨学期追踪。",
+    "",
+    `### p.10 · 划线批注 · ${day(-3).slice(5)}　[↗](zotero://open-pdf/library/items/SMPL0001A?annotation=SMPL000105)`,
+    "",
+    "可以作为研究设计里要控制的变量。",
+    "",
+    `## ${papers[1].title}`,
+    "",
+    `[[${ZOT_DIR}/${papers[1].title}|文献笔记]] · 2023 · 1 条 · 最近 ${day(-12)}`,
+    "",
+    `### p.7 · 便签 · ${day(-12).slice(5)}　[↗](zotero://open-pdf/library/items/SMPL0002A?annotation=SMPL000203)`,
+    "",
+    "说明「被引用得多」比「链接得多」更重要。",
   ]);
+
+  // The four collection notes, built the same way the Literature tab's 更新合集 builds them.
+  if (typeof litCollectionDocs === "function") {
+    const parsed = Object.entries(files).filter(([path]) => path.startsWith(ZOT_DIR + "/")).map(([path, raw]) => litPaperFromNote(raw, path));
+    const docs = litCollectionDocs(parsed, litTagCanon({}), `${T} 09:00`);
+    for (const [kind, doc] of Object.entries(docs)) {
+      files[`${LIT_DIR}/${LIT_COLLECTION_FILES[kind]}`] = litMergeCollection(null, doc.head, doc.body);
+    }
+  }
 
   // ── practice ──
   add("Drills/Sessions.md", [

@@ -340,8 +340,8 @@ ul.life-log-note-timeline .ll-body{line-height:1.6;color:var(--text-normal);over
 }
 
 /* Literature · essay draft */
-/* one row: Papers · Timeline · Tags · Synthesis · Notes */
-#db26 #lit-stats{grid-template-columns:repeat(5,minmax(88px,150px))}
+/* one row: Papers · Gaps · Matrix · Tags · Synthesis · Timeline · Notes */
+#db26 #lit-stats{grid-template-columns:repeat(7,minmax(80px,150px))}
 #db26 .lit-essaywrap{border:1px solid var(--border);border-radius:9px;background:var(--bg2);max-height:620px}
 #db26 .lit-qhead{display:flex;align-items:center;gap:10px}
 #db26 .lit-qhead span{flex:1}
@@ -360,7 +360,7 @@ ul.life-log-note-timeline .ll-body{line-height:1.6;color:var(--text-normal);over
 #db26 .lit-essay-todo-i:hover{color:var(--text2)}
 #db26 .lit-essay-todo-i>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #db26 .lit-essay-todo-i.lit-dim{cursor:default;color:var(--text4)}
-@media(max-width:760px){#db26 #lit-stats{grid-template-columns:repeat(2,1fr)}#db26 .lit-essay-b{padding-inline-start:0}}
+@media(max-width:760px){#db26 #lit-stats{grid-template-columns:repeat(3,1fr)}#db26 .lit-essay-b{padding-inline-start:0}}
 
 /* ── 文件预览 · three-pane browser ────────────────────────────── */
 #db26 .fb-search{display:flex;align-items:center;gap:9px;background:var(--bg2);border:.5px solid var(--border);border-radius:8px;padding:7px 12px;margin-bottom:12px}
@@ -794,3 +794,21 @@ ul.life-log-note-timeline .ll-body{line-height:1.6;color:var(--text-normal);over
 .onedesk-off-writing [data-view="writing"],.onedesk-off-writing #view-writing,
 .onedesk-off-time [data-view="time"],.onedesk-off-time #view-time{display:none!important}
 #db26 .wt-error{color:var(--text-error)}
+
+/* ── Literature collections: gaps, matrix, topics ─────────────────── */
+#db26 .lit-qhead .lit-notes-open{flex:0 0 auto;float:none;margin-inline-start:6px}
+#db26 .lit-matrix-filter{width:100%;margin:10px 0 8px;padding:6px 10px;font-size:13px;border:.5px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text)}
+#db26 .lit-matrix-wrap{overflow-x:auto}
+#db26 .lit-matrix{width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.6;table-layout:fixed;min-width:860px}
+#db26 .lit-matrix th{text-align:left;font-size:11px;letter-spacing:.5px;color:var(--text4);font-weight:600;padding:6px 8px;border-bottom:.5px solid var(--border)}
+#db26 .lit-matrix th:first-child{width:22%}
+#db26 .lit-matrix th:nth-child(2){width:52px}
+#db26 .lit-matrix td{vertical-align:top;padding:9px 8px;border-bottom:.5px solid var(--bg4);color:var(--text2)}
+#db26 .lit-matrix tr[hidden]{display:none}
+#db26 .lit-matrix-t{font-weight:600;color:var(--text);cursor:pointer}
+#db26 .lit-matrix-t:hover{color:var(--blue-text)}
+#db26 .lit-matrix-c{font-size:11.5px;color:var(--text4);margin-top:2px}
+#db26 .lit-topic{margin-top:6px}
+#db26 .lit-topic-h{display:flex;align-items:center;gap:8px;margin:14px 0 2px;font-size:12px;font-weight:600;letter-spacing:.4px;color:var(--blue-text)}
+#db26 .lit-topic-h span{font-weight:400;color:var(--text4)}
+#db26 .lit-cite{color:var(--text4);white-space:nowrap}

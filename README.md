@@ -2,7 +2,9 @@
 
 **English** · [中文](README.zh-CN.md)
 
-An all-in-one dashboard for Obsidian. One view brings together today's tasks, project progress, a punch clock, reading and literature notes, writing practice and English speaking drills — all read from, and written back to, plain Markdown notes in your vault.
+An all-in-one dashboard for Obsidian, built around a graduate student's day. One view brings together today's tasks, project progress, a punch clock, literature notes, writing practice and English speaking drills — all read from, and written back to, plain Markdown notes in your vault.
+
+**For literature reviews**, OneDesk turns a Zotero collection into a research gap collection, a comparison matrix, a tag index and a related-work draft grouped by topic. [See how →](#literature-for-graduate-students)
 
 > The interface is currently in Chinese. English UI is planned.
 
@@ -15,7 +17,7 @@ An all-in-one dashboard for Obsidian. One view brings together today's tasks, pr
 | **Dashboard** | Today's tasks, add tasks to today's daily note, project board, punch clock, countdowns, waiting-for and someday lists, quick links, activity heatmap |
 | **Files** | Three-pane vault browser: folders, their notes, and an editable preview |
 | **Projects** | For each project: next actions, completed tasks and life-log entries as one timeline; an all-project timeline for 7 days / 30 days / everything |
-| **Literature** | Imports a Zotero collection into one note per paper, with highlights placed under the paper's own section headings *(desktop only, see below)* |
+| **Literature** | Imports a Zotero collection into one note per paper, then collects research gaps, a comparison matrix, a tag index and a related-work draft across all papers |
 | **Reading** | Stats and recent thoughts from exported book notes (`📌` highlights, `💭` thoughts) |
 | **English** | A fixed speaking syllabus (short answers / 2-minute talk / discussion) built from what you actually did that day, plus a phrase bank |
 | **Writing** | Academic phrase practice from your literature, and a public writing pipeline (idea → draft → published) |
@@ -38,9 +40,9 @@ Browse folders and recent notes; the preview on the right is editable.
 ![Files](docs/screenshots/03-files.webp)
 
 ### Literature
-Papers imported from a Zotero collection, with highlights, reading sessions and status. See [Literature in detail](#literature-in-detail).
+Research gaps, a comparison matrix, a tag index and a related-work draft, all built from your Zotero highlights. See [Literature for graduate students](#literature-for-graduate-students).
 
-![Literature](docs/screenshots/04-literature.webp)
+![Literature · Gaps](docs/screenshots/04a-lit-gaps.webp)
 
 ### Reading
 Books, hours, highlights and your latest thoughts from exported book notes.
@@ -109,59 +111,98 @@ OneDesk has no database. Every card is a view over ordinary notes, using these c
 
 If the core **Daily notes** plugin is enabled, its folder and date format decide where daily notes live.
 
-## Literature in detail
+## Literature for graduate students
 
-Highlighting stays in Zotero; thinking happens in Obsidian. The Literature tab turns one Zotero collection into reading notes you can scan, search by tag, and grow into a related-work draft.
+Reading for a thesis means dozens of papers, and the questions that matter cut across all of them: *What gaps have others pointed out? How do the methods and datasets compare? What has been said about X? How do I turn this into a related-work section?*
 
-### Setting it up (desktop)
+OneDesk answers those from the highlights you already make in Zotero. Highlighting stays in Zotero; the collecting and writing happen in Obsidian.
+
+### The workflow
+
+1. **Read and highlight in Zotero.** Tag the sentence that states the problem `gap`, the method `method`, the data `dataset`, the main finding `result`. Add any other tags you like (`limitation`, `future work`, `baseline` …). Type your own thoughts into the annotation comment.
+2. **Sync.** Press **Sync Zotero** on the Literature tab. Each paper becomes a note, and the four collection notes below are rebuilt.
+3. **Write one paragraph per paper.** Under `## 综述段落` in a paper's note, write how you would describe it in your related work. Put its themes in the frontmatter, e.g. `topics: [graph neural networks, few-shot learning]`.
+4. **Use the collections.** Gaps for your research questions and proposal, Matrix to compare approaches, Tags to see everything said about a theme, Synthesis as the first draft of your literature review.
+
+### The collections
+
+**Gap collection** — every sentence tagged as a gap, grouped by paper with the newest first, each with its translation, your notes, page and a link back to the PDF. Papers you have read but not tagged a gap in are listed underneath, so nothing slips through. `gap`, `research gap`, `问题` and `研究缺口` all count as the same tag.
+
+![Gaps](docs/screenshots/04a-lit-gaps.webp)
+
+**Comparison matrix** — one row per paper: problem, method, dataset and result side by side, from each note's 速览 table. Filter by any word, such as a dataset name or a year. Cells you type by hand in a note's table show up here too.
+
+![Matrix](docs/screenshots/04b-lit-matrix.webp)
+
+**Tag index** — all highlights across the collection, grouped by tag, with how many highlights and how many papers each tag covers. Synonyms are merged.
+
+![Tags](docs/screenshots/04c-lit-tags.webp)
+
+**Related-work draft** — every synthesis paragraph you have written, grouped by `topics` and ordered oldest paper first within each topic, each ending with an (Author, Year) citation. **Copy all** puts the whole draft, with topic headings, on the clipboard. Papers you have read but not written about are listed underneath.
+
+![Synthesis](docs/screenshots/04d-lit-synthesis.webp)
+
+### Collections as notes
+
+Every sync, and the **更新合集** (update collections) button, writes the four collections as ordinary notes in `Sources/Reading/`: `Gap 合集`, `文献矩阵`, `标签合集` and `综述草稿`. They can be searched, linked from your proposal, read on your phone and synced like any note.
+
+Each has a **我的整理** (my notes) section at the top for your own synthesis. Everything above the `%% OneDesk … %%` line is yours and is never rewritten; only what lies below it is regenerated.
+
+![Gap collection note](docs/screenshots/04e-gap-note.webp)
+
+Collections are rebuilt only when you sync or press the button, never just by opening a page, so several devices syncing the same vault don't fight over these files.
+
+### Tag synonyms
+
+Settings → OneDesk → *标签同义词* merges spellings into one tag, one group per line:
+
+```text
+gap: limitation of prior work, 局限
+baseline: baselines, 对比方法
+```
+
+These are added to the built-in groups for `gap`, `method`, `dataset` and `result`.
+
+### Setting up Zotero sync (desktop)
 
 1. Use Zotero 6 or 7 with its default data folder, `~/Zotero`.
 2. Make sure the `sqlite3` command-line tool is installed. It ships with macOS; on Linux install it from your package manager. Windows is not supported yet.
-3. Put the papers you are reading into one collection, and enter its **exact name** in Settings → OneDesk → *Zotero 合集*. Subcollections are not included.
-4. Press **Sync Zotero** on the Literature tab.
+3. Put the papers into one collection and enter its **exact name** in Settings → OneDesk → *Zotero 合集*. Subcollections are not included.
+4. Press **Sync Zotero**.
 
-OneDesk reads a temporary copy of Zotero's database, so Zotero can stay open. Nothing is ever written back to Zotero.
+OneDesk reads a temporary copy of Zotero's database, so Zotero can stay open. Nothing is ever written back to Zotero. Every view and collection works on mobile from the synced notes.
 
-### What a sync writes
+### What a paper note contains
 
-**One note per paper** in `Sources/Reading/Zotero/`, named after the title. The frontmatter holds `title`, `authors`, `year`, `venue`, `doi`, `zotero_key`, a `status` (`unread`, `read`, or `deep` from 20 highlights up), counts of `highlights` and `figures`, `last_read`, and `sessions` — one line per day you annotated the paper. The body, top to bottom:
+One note per paper in `Sources/Reading/Zotero/`, named after the title. The frontmatter holds `title`, `authors`, `year`, `venue`, `doi`, `zotero_key`, `status` (`unread`, `read`, or `deep` from 20 highlights up), counts of `highlights` and `figures`, `last_read`, `sessions` (one line per day you annotated) and `topics`.
 
 | Section | Contents |
 | --- | --- |
-| Header | Authors · year · venue, with links to open the item in Zotero and to its DOI |
-| **速览** (at a glance) | A four-row table — problem, method, dataset, result — filled from highlights tagged `gap` / `research gap`, `method`, `dataset`, `result` (Chinese equivalents work too). A row you typed yourself is kept until a tagged highlight fills it. |
-| **图表** (figures) | Every rectangle you drew over a figure or table, copied into `_figures/<zotero key>/` and captioned from the PDF text (`Fig. 2. …`). Grouped into method, experiments and results by caption keywords. |
-| **我划的句子** (highlights) | Your highlights grouped under the paper's own sections — Abstract, Introduction, Related work, Method, Experiments, Results, Discussion, Conclusion — detected from Zotero's full-text cache. Each shows its tags, page, and a link that jumps to that exact spot in the PDF. Sticky notes appear in place among them. |
-| 素材 (raw material) | A collapsed callout listing the gap and method sentences and everything you wrote about the paper |
-| **综述段落** (synthesis) and **我的话** (my words) | Yours. Write a paragraph for your related-work section here. |
+| Header | Authors · year · venue, with links to the item in Zotero and its DOI |
+| **速览** (at a glance) | Problem, method, dataset, result, filled from highlights with those tags. A row you type yourself is kept until a tagged highlight fills it. |
+| **图表** (figures) | Rectangles you drew over figures or tables, copied into `_figures/<zotero key>/`, captioned from the PDF text and grouped into method, experiments and results |
+| **我划的句子** (highlights) | Highlights grouped under the paper's own sections (Abstract, Introduction, Method, Results …), each with tags, page and a link to that spot in the PDF; sticky notes in place among them |
+| 素材 (raw material) | A collapsed list of the gap and method sentences and everything you wrote about the paper |
+| **综述段落** (synthesis) and **我的话** (my words) | Yours |
 
-On highlights:
+- Short tags (up to 16 characters, with no comma, period or semicolon) are labels. Anything longer typed into the tag box is a note, shown as **我：** under the sentence, as is text in the annotation comment. A translation stored in the comment between `🔤` marks is shown as a faint translation line.
+- **Your writing is never overwritten**: everything from `## 综述段落` to the end of a note is carried over on every sync. Notes are matched by `zotero_key`, so renaming a paper in Zotero keeps what you wrote.
+- `Sources/Reading/Thoughts.md` collects everything you wrote in Zotero — sticky notes, comments and child notes — leaving out notes you didn't write (reading-time data, arXiv comments, TL;DRs, notes that only repeat highlights).
+- If a figure shows *Zotero hasn't rendered this image yet*, open that annotation once in Zotero and sync again.
 
-- Short tags (up to 16 characters, with no comma, period or semicolon) are treated as labels. Anything longer typed into the tag box is treated as a note and shown as **我：** under the sentence.
-- Text you type in an annotation's comment also appears as **我：**. If a translation plugin stores its translation in the comment between `🔤` marks, that part is shown as a faint translation line instead.
-
-**Your writing is never overwritten.** Everything from `## 综述段落` to the end of a note is carried over unchanged on every sync. Notes are matched by `zotero_key`, so renaming a paper in Zotero renames its note without losing what you wrote. Deleting an image annotation in Zotero removes its picture from the vault.
-
-**`Sources/Reading/Thoughts.md`** collects everything *you* wrote in Zotero — sticky notes, your own words in annotation comments, and child notes — grouped by paper, most recently written first. Notes you didn't write (reading-time plugin data, arXiv comments, TL;DRs, notes generated from annotations that only repeat the highlights) are left out. This file is rewritten on each sync, so edit those notes in Zotero.
-
-If a figure shows *Zotero hasn't rendered this image yet*, open that annotation once in Zotero and sync again.
-
-### The five views
+### All Literature views
 
 | View | What it shows |
 | --- | --- |
-| **Papers** | Every paper with its status (New / Read / Deep), authors, year, venue, highlight count and last read date |
-| **Timeline** | Each day you annotated each paper, and how many highlights you made |
-| **Tags** | All highlights across the collection, grouped by tag, plus an *Untagged* group. Each shows the paper, section, page, translation and your notes, with links to the note and to the spot in the PDF. |
-| **Synthesis** | Every *综述段落* you have written, oldest paper first — a related-work draft you can copy in one click — followed by the papers you have highlighted but not yet written about |
+| **Papers** | Status (New / Read / Deep), authors, year, venue, highlights and last read date |
+| **Gaps** | The gap collection |
+| **Matrix** | The comparison matrix, with a filter |
+| **Tags** | The tag index |
+| **Synthesis** | The related-work draft by topic, with Copy all |
+| **Timeline** | Each day you annotated each paper |
 | **Notes** | `Thoughts.md` read back |
 
-### Used by other tabs
-
-- **English** — on long-sentence days, the prompt uses English sentences you highlighted that carry a translation.
-- **Writing** — *Research writing* builds its term and phrase index from the full text of papers in the collection set as *写作素材合集* (subcollections included). It reads Zotero only after that setting is filled in.
-
-A tagging habit that makes every view useful: while reading, tag the sentence stating the problem `gap`, the method `method`, the data `dataset`, and the main finding `result`.
+Other tabs use the same notes: on long-sentence days, **English** practises with sentences you highlighted that carry a translation; **Writing** builds its academic phrase index from the full text of papers in the collection set as *写作素材合集*.
 
 ## Settings
 
@@ -189,6 +230,7 @@ Many sync tools don't carry a plugin's own `data.json`. Click **创建配置文�
 
 - **Zotero sync** on the Literature tab reads Zotero's database through the `sqlite3` command-line tool, found in `/usr/bin`, `/opt/homebrew/bin` or `/usr/local/bin` (macOS and Linux). The notes it creates, and every Literature view, work on any device.
 - **Research writing** on the Writing tab builds its phrase index from the Zotero collection set in settings (写作素材合集). Zotero is not read until that is set, and the index, once built, can be used on mobile.
+- Literature views and collection notes work on every device.
 - Everything else works on mobile.
 
 ## Development

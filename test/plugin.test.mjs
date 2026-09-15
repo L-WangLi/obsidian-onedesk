@@ -177,7 +177,7 @@ test("sample reading notes and papers carry the fields the dashboard reads", () 
   assert.ok(dashboardSource.includes(pair.source));
   assert.equal([...books[0][1].matchAll(pair)].length, 1);
   const papers = Object.entries(files).filter(([p]) => p.startsWith("Sources/Reading/Zotero/"));
-  assert.equal(papers.length, 2);
+  assert.equal(papers.length, 6);
   for (const [, t] of papers) assert.match(t, /^type: paper$/m);
 });
 
@@ -222,4 +222,12 @@ test("sample banner is a self-contained original SVG", () => {
 test("heatmap lays out one column per week", () => {
   const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
   assert.match(css, /\.heatmap-grid\{[^}]*grid-template-rows:repeat\(7,auto\);grid-auto-flow:column/);
+});
+
+test("files the dashboard creates on demand survive two renders racing", () => {
+  assert.match(dashboardSource, /async function ensureVaultFile\(path, body, folder\)/);
+  for (const fn of ["ensureQuestionPoolFile", "ensureWishFile", "ensureWaitingFile"]) {
+    const body = dashboardSource.slice(dashboardSource.indexOf(`async function ${fn}(`)).split("\n}")[0];
+    assert.match(body, /return ensureVaultFile\(/, fn);
+  }
 });

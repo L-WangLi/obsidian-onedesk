@@ -26,6 +26,8 @@ export function bundle() {
     "",
     "// ── src/lifelog-timeline.js ──",
     read("src/lifelog-timeline.js"),
+    "// ── src/literature-core.js ──",
+    read("src/literature-core.js"),
     "// ── src/sample-vault.js ──",
     read("src/sample-vault.js"),
     "// ── src/dashboard.js ──",
@@ -40,7 +42,7 @@ export function bundle() {
 
 export function sampleFiles(now = new Date()) {
   const context = { now };
-  vm.runInNewContext(read("src/sample-vault.js") + "\nresult = onedeskSampleFiles(now);", context);
+  vm.runInNewContext(read("src/literature-core.js") + "\n" + read("src/sample-vault.js") + "\nresult = onedeskSampleFiles(now);", context);
   return context.result;
 }
 

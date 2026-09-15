@@ -1,5 +1,5 @@
 // ── Plugin shell ── the workspace view, the settings tab and the synced config file.
-// scripts/build.mjs puts src/lifelog-timeline.js, src/sample-vault.js and src/dashboard.js
+// scripts/build.mjs puts src/lifelog-timeline.js, src/literature-core.js, src/sample-vault.js and src/dashboard.js
 // (wrapped as runDashboard) ahead of this file in the generated main.js.
 const {
   AbstractInputSuggest, Component, ItemView, Modal, Notice, Plugin, PluginSettingTab,
@@ -51,10 +51,11 @@ const DEFAULT_SETTINGS = {
   projects: null,
   projectAliases: {},
   projectBoard: {},
+  tagAliases: {},
 };
 
 // The keys that travel in onedesk.json, in the order they are written.
-const SHARED_KEYS = ["openOnStartup", "modules", "me", "vault", "projects", "projectAliases", "projectBoard"];
+const SHARED_KEYS = ["openOnStartup", "modules", "me", "vault", "projects", "projectAliases", "projectBoard", "tagAliases"];
 
 // Life-log timeline styling reads this (see lifelog-timeline.js).
 const LIFE_LOG_DIR_DEFAULT = "Intake/Log/";
@@ -242,6 +243,7 @@ module.exports = class OneDeskPlugin extends Plugin {
       projects: s.projects,
       projectAliases: s.projectAliases,
       projectBoard: s.projectBoard,
+      tagAliases: s.tagAliases,
     };
   }
 
@@ -473,6 +475,21 @@ class OneDeskSettingTab extends PluginSettingTab {
           if (!["HOME", "ZOT_COLL", "ZOT_ROOT"].includes(key)) new FolderSuggest(this.app, t.inputEl);
         });
     }
+
+    new Setting(containerEl).setName("文献").setHeading();
+    new Setting(containerEl)
+      .setName("标签同义词")
+      .setDesc("这些写法会被合并成同一个标签，用于 Gap 合集、速览表和标签合集。每行一组：「标签: 同义词, 同义词」。输入框里的灰字是默认值，写在这里的会追加进去。")
+      .addTextArea(t => {
+        t.inputEl.rows = 5;
+        t.inputEl.addClass("onedesk-json-input");
+        t.setPlaceholder(litFormatTagAliases(LIT_DEFAULT_TAG_ALIASES));
+        t.setValue(litFormatTagAliases(s.tagAliases));
+        t.onChange(v => {
+          s.tagAliases = litParseTagAliases(v);
+          this.queueSave();
+        });
+      });
 
     new Setting(containerEl).setName("项目看板（高级）").setHeading();
     const board = { projects: s.projects, projectAliases: s.projectAliases, projectBoard: s.projectBoard };

@@ -257,6 +257,7 @@ dv.container.innerHTML = `<div id="db26">
       <div class="back-btn" data-action="nav" data-view="dashboard" style="padding:0">← Dashboard</div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="card-sub" id="lit-synced"></span>
+        <button type="button" class="act-btn" data-action="lit-build" id="lit-build-btn" title="重新生成 Gap 合集、文献矩阵、标签合集与综述草稿笔记">更新合集</button>
         <button type="button" class="act-btn" data-action="zot-sync" id="lit-sync-btn">Sync Zotero</button>
       </div>
     </div>
@@ -267,7 +268,7 @@ dv.container.innerHTML = `<div id="db26">
     </div>
 
     <div class="card rp-card">
-      <div class="card-title">Papers</div>
+      <div class="card-title" id="lit-view-title">Papers</div>
       <div id="lit-table" class="lit-table"></div>
     </div>
   </div>
@@ -534,6 +535,20 @@ function dailyFile(dateStr) {
   return _dailyFileList.find(f => f.basename === dateStr) || null;
 }
 
+
+// Create a note unless it exists. Two renders can reach here for the same file at once;
+// the one that loses the race gets the winner's file instead of "File already exists".
+async function ensureVaultFile(path, body, folder) {
+  const found = app.vault.getAbstractFileByPath(path);
+  if (found) return found;
+  if (folder) { try { await app.vault.createFolder(folder); } catch (_e) {} }
+  try { return await app.vault.create(path, body); }
+  catch (e) {
+    const existing = app.vault.getAbstractFileByPath(path);
+    if (existing) return existing;
+    throw e;
+  }
+}
 
 // Read a template's body (returns string), strip the YAML front-matter? — keep it, since
 // new notes often want the same fields. Caller can decide.
@@ -1507,10 +1522,7 @@ const WISH_RE = /^-\s+\[([ xX])\]\s+(\d{4}-\d{2}-\d{2})\s*·\s*(.+?)(?:\s*✅\s*
 const WISH_NOTE_RE = /^\s{2,}-\s+✍️\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*·\s*(.+)$/;
 
 async function ensureWishFile(){
-  let f = app.vault.getAbstractFileByPath(WISH_PATH);
-  if (f) return f;
-  try { await app.vault.createFolder(V.CAPTURE); } catch(_e){}
-  return await app.vault.create(WISH_PATH, '# Someday\n\n> 临时想做、想看或想学的事。新完成记录会自动写入精确到分钟的时间。\n\n');
+  return ensureVaultFile(WISH_PATH, '# Someday\n\n> 临时想做、想看或想学的事。新完成记录会自动写入精确到分钟的时间。\n\n', V.CAPTURE);
 }
 
 // ─ 等待清单 (Waiting For) — structured list with notes/history ──
@@ -1520,9 +1532,7 @@ const WAITING_NOTE_RE = /^\s{2,}-\s+✍️\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s
 const _waitingFilter = 'active';   // no switch any more — done items just drop out
 
 async function ensureWaitingFile(){
-  let f=app.vault.getAbstractFileByPath(WAITING_PATH);
-  if(f) return f;
-  return await app.vault.create(WAITING_PATH, '# Waiting for\n\n> 等待他人回复、交付或外部事件。Dashboard 的 ✍️ 可以添加时间戳Note。\n\n');
+  return ensureVaultFile(WAITING_PATH, '# Waiting for\n\n> 等待他人回复、交付或外部事件。Dashboard 的 ✍️ 可以添加时间戳Note。\n\n');
 }
 async function loadWaiting(){
   const box=$('waiting-list'); if(!box) return;
@@ -2056,7 +2066,9 @@ const ZOT = {
   OUT:   V.ZOT_OUT,
   SQLITE:['/usr/bin/sqlite3','/opt/homebrew/bin/sqlite3','/usr/local/bin/sqlite3'],
 };
-const ZOT_MINE = '## 综述段落';
+const ZOT_MINE = LIT_ESSAY_HEAD;
+// Tag → canonical tag, so "research gap", "问题" and "gap" count as one (literature-core.js).
+const LIT_CANON = litTagCanon(CFG.tagAliases);
 const ZOT_MINE_LEGACY = '## 我的话';
 
 // Filenames must stay stable across syncs (they are the note identity), so cut
@@ -2436,23 +2448,10 @@ const ZOT_FAINT = s => `<small style="color:var(--text-faint)">${s}</small>`;
 // rendered as faint small print and was filtered out of the Synthesis view as
 // if it were still the hint. Text inside the tag that isn't one of the stock
 // hints is yours.
-const ZOT_ESSAY_HINTS = [
-  '一段自己的话，写 related work 时能直接改写进去。',
-  '一段自己的话，写 related work 时能直接改写进去：这篇看到了什么缺口、怎么做的、还剩什么没解决。',
-];
+const ZOT_ESSAY_HINTS = LIT_ESSAY_HINTS;
 const ZOT_SMALL = /<small\b[^>]*>([\s\S]*?)<\/small>/g;
 const zotIsHint = s => ZOT_ESSAY_HINTS.includes(String(s).trim());
 
-// The paragraph under 综述段落, hint dropped, anything typed into the hint kept.
-function zotEssayText(raw) {
-  const i = raw.indexOf(ZOT_MINE);
-  if (i < 0) return '';
-  let seg = raw.slice(i + ZOT_MINE.length);
-  const j = seg.indexOf('\n## ');
-  if (j >= 0) seg = seg.slice(0, j);
-  return seg.replace(ZOT_SMALL, (_, inner) => zotIsHint(inner) ? '' : inner)
-    .split('\n').filter(l => l.trim()).join('\n').trim();
-}
 
 // On sync, the same repair in the file: unwrap a paragraph written into the
 // hint, drop a hint nobody touched. Nothing else in your part of the note moves.
@@ -2472,17 +2471,11 @@ function zotTidyTail(tail) {
 // ── 速览 table ──────────────────────────────────────────────────
 // Filled from the tags you put on individual sentences. A row you typed by
 // hand survives as long as no tagged sentence claims it.
-const ZOT_BRIEF = [
-  ['想解决的问题', /^(research\s*gap|gap|问题|研究缺口)$/i],
-  ['方法',        /^(methods?|方法|approach)$/i],
-  ['数据集',      /^(datasets?|data|数据|数据集)$/i],
-  ['结果',        /^(results?|结果|findings?)$/i],
-];
-const ZOT_BRIEF_HEAD = '## 速览';
+const ZOT_BRIEF_HEAD = LIT_BRIEF_HEAD;
 
 function zotBriefRows(hls, old) {
-  return ZOT_BRIEF.map(([label, re]) => {
-    const hit = hls.find(h => zotTags(h).some(t => re.test(t)));
+  return LIT_BRIEF.map(([key, label]) => {
+    const hit = hls.find(h => zotTags(h).some(t => LIT_CANON(t) === key));
     let v = '';
     if (hit) {
       // Chinese first: this row exists to be scanned, not cited.
@@ -2493,17 +2486,7 @@ function zotBriefRows(hls, old) {
   });
 }
 
-function zotParseBrief(text) {
-  const out = {};
-  const i = text.indexOf(ZOT_BRIEF_HEAD);
-  if (i < 0) return out;
-  for (const line of text.slice(i).split('\n')) {
-    if (line.startsWith('## ') && !line.startsWith(ZOT_BRIEF_HEAD)) break;
-    const m = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|(.*)\|\s*$/);
-    if (m) out[m[1].trim()] = m[2].trim();
-  }
-  return out;
-}
+const zotParseBrief = litBriefFromNote;
 
 // Colours carry no meaning in this library — kept only as a scanning marker.
 function zotNote(it, hls, mine, oldBrief, figs, thoughts) {
@@ -2619,13 +2602,12 @@ function zotNote(it, hls, mine, oldBrief, figs, thoughts) {
 
   // Raw material for the paragraph below: the sentences you marked as the gap
   // and the method, plus anything you wrote yourself.
-  const gapRe = ZOT_BRIEF[0][1], methRe = ZOT_BRIEF[1][1];
-  const pick = re => hls.filter(h => zotTags(h).some(t => re.test(t)));
+  const pick = key => hls.filter(h => zotTags(h).some(t => LIT_CANON(t) === key));
   const mineNotes = hls.filter(h => zotTags(h).some(t => !zotIsLabel(t)) || zotOwn(h.comment));
   const short = h => { const s = (String(h.text)).replace(/\s*\n\s*/g, ' ').trim(); return s.length > 110 ? s.slice(0, 110) + '…' : s; };
   const stockLines = []
-    .concat(pick(gapRe).map(h => `> - **gap** ${short(h)}`))
-    .concat(pick(methRe).map(h => `> - **方法** ${short(h)}`))
+    .concat(pick('gap').map(h => `> - **gap** ${short(h)}`))
+    .concat(pick('method').map(h => `> - **方法** ${short(h)}`))
     .concat(mineNotes.map(h => {
       const n = zotTags(h).filter(t => !zotIsLabel(t)).concat(zotOwn(h.comment) ? [zotOwn(h.comment)] : [])[0];
       return `> - **我写过** ${String(n).replace(/\s*\n\s*/g, ' ').slice(0, 110)}`;
@@ -2731,11 +2713,12 @@ async function zotSync() {
     }
 
     await app.vault.adapter.write(V.ZOT_THOUGHTS, zotThoughtsDoc(thoughtPapers));
+    const collected = await litWriteCollections(true);
     LSS('zot_synced_at', Date.now());
     zotNotice(`Zotero 同步完成 · ${items.length} 篇（新建 ${created} · 更新 ${updated}` +
       (renamed ? ` · 改名 ${renamed}` : '') + `）· ${anns.length - figCount} 条划线` +
       (figCount ? ` · ${figCount} 张图` + (figMissing ? `（${figMissing} 张待 Zotero 渲染）` : '') : '') +
-      (thoughtCount ? ` · ${thoughtCount} 条想法` : ''));
+      (thoughtCount ? ` · ${thoughtCount} 条想法` : '') + (collected ? ' · 合集已更新' : ''));
     say('Just synced');
     // Dataview needs a beat to index the files we just wrote.
     loadLiterature();
@@ -2755,126 +2738,170 @@ function setLitTag(tag) { LSS('lit_tag', tag); loadLiterature(); }
 // ── Sentence-level index ────────────────────────────────────────
 // The notes written by zotSync are the source of truth; parse the highlight
 // blocks back out of them so this view works without touching Zotero.
-let _litQuotes = null, _litQuotesSig = '';
+const LIT_UNTAGGED = ' untagged';
 
-const LIT_UNTAGGED = ' untagged';
-
-function litParseQuotes() {
+// Every paper note parsed once per change to the folder (see literature-core.js).
+let _litPapers = null, _litPapersSig = '';
+function litPapers() {
   const files = app.vault.getMarkdownFiles().filter(f => f.path.startsWith(ZOT.OUT + '/'));
   const sig = files.length + ':' + files.reduce((a, f) => Math.max(a, f.stat.mtime), 0);
-  if (_litQuotes && _litQuotesSig === sig) return _litQuotes;
-
-  const out = [];
-  for (const f of files) {
-    const cache = app.metadataCache.getFileCache(f);
-    const paper = String(cache?.frontmatter?.title || f.basename);
-    let raw = '';
-    try { raw = _litRawCache[f.path] || ''; } catch (_e) {}
-    if (!raw) continue;
-    // Each highlight is a meta line (tags · page · ↗) followed by a blockquote.
-    const lines = raw.split('\n');
-    let section = '', meta = '', block = null;
-    const flush = () => {
-      if (!block || !block.length) { block = null; return; }
-      const first = block[0].trim();
-      if (!first.startsWith('[!')) {          // skip the auto 素材 callout
-        let text = '', zh = '', mine = [];
-        for (const l of block) {
-          const t = l.trim();
-          if (!t) continue;
-          const sm = t.match(/^<small[^>]*>([\s\S]*?)<\/small>$/);
-          if (sm) { zh = sm[1].trim(); continue; }
-          if (t.startsWith('**我：**')) { mine.push(t.replace('**我：**', '').trim()); continue; }
-          if (!text) text = t;
-        }
-        if (text) out.push({
-          paper, path: f.path, section, text, zh, mine,
-          page: (meta.match(/\*\*p\.([^*　]+)\*\*/) || [, ''])[1],
-          tags: [...meta.matchAll(/`([^`]+)`/g)].map(m => m[1]),
-          link: (meta.match(/\[↗\]\(([^)]+)\)/) || [, ''])[1],
-        });
-      }
-      block = null;
-    };
-    for (const line of lines) {
-      if (line.startsWith('>')) { (block = block || []).push(line.replace(/^>\s?/, '')); continue; }
-      flush();
-      if (line.startsWith('### ')) { section = line.replace(/^###\s*/, '').replace(/　?<small>.*/, '').trim(); meta = ''; continue; }
-      if (line.startsWith('## ')) { section = ''; meta = ''; continue; }
-      if (line.trim()) meta = line;
-    }
-    flush();
-  }
-  _litQuotes = out; _litQuotesSig = sig;
-  return out;
+  if (_litPapers && _litPapersSig === sig) return _litPapers;
+  _litPapers = files.map(f => [f.path, _litRawCache[f.path]])
+    .filter(([, raw]) => raw && litFrontmatter(raw).type === 'paper')
+    .map(([path, raw]) => litPaperFromNote(raw, path));
+  _litPapersSig = sig;
+  return _litPapers;
 }
 
 // cachedRead is async, so the raw bodies are primed before rendering.
-let _litRawCache = {};
+let _litRawCache = {}, _litRawMtime = {};
 async function litPrimeRaw() {
   const files = app.vault.getMarkdownFiles().filter(f => f.path.startsWith(ZOT.OUT + '/'));
-  const next = {};
+  const next = {}, mtimes = {};
   for (const f of files) {
-    try { next[f.path] = _litRawCache[f.path] && _litQuotesSig ? _litRawCache[f.path] : await app.vault.cachedRead(f); }
-    catch (_e) {}
+    try {
+      // re-read a note once it changes, e.g. after you write its 综述段落
+      next[f.path] = _litRawMtime[f.path] === f.stat.mtime ? _litRawCache[f.path] : await app.vault.cachedRead(f);
+      mtimes[f.path] = f.stat.mtime;
+    } catch (_e) {}
   }
-  _litRawCache = next;
+  _litRawCache = next; _litRawMtime = mtimes;
 }
 
-// The `## 综述段落` you wrote in each note, gathered into one draft.
-function litParseEssays() {
-  const files = app.vault.getMarkdownFiles().filter(f => f.path.startsWith(ZOT.OUT + '/'));
-  const out = [];
-  for (const f of files) {
-    const raw = _litRawCache[f.path];
-    if (!raw) continue;
-    const fm = app.metadataCache.getFileCache(f)?.frontmatter || {};
-    const text = zotEssayText(raw);
-    out.push({
-      paper: String(fm.title || f.basename), path: f.path,
-      year: String(fm.year || ''), venue: String(fm.venue || ''),
-      n: Number(fm.highlights) || 0, text,
-    });
-  }
-  // Older first — that is the shape a related-work section takes.
-  return out.sort((a, b) => (a.year || '9999').localeCompare(b.year || '9999') || b.n - a.n);
+// A literature quote as a card: source line, sentence, translation, your notes, links.
+function litQuoteHtml(q, withPaper) {
+  const src = [withPaper && q.paper ? q.paper.title : '', q.section, q.page ? 'p.' + q.page : ''].filter(Boolean).join('　·　');
+  const path = q.paper ? q.paper.path : '';
+  return `<div class="lit-q">
+    ${src ? `<div class="lit-q-src">${esc(src)}</div>` : ''}
+    <div class="lit-q-text">${esc(q.text)}</div>
+    ${q.zh ? `<div class="lit-q-zh">${esc(q.zh)}</div>` : ''}
+    ${(q.mine || []).map(m => `<div class="lit-q-mine">我：${esc(m)}</div>`).join('')}
+    <div class="lit-q-foot">
+      ${path ? `<span class="lit-q-link" data-action="open-vault" data-path="${esc(path)}">Open note →</span>` : ''}
+      ${q.link ? `<a class="lit-q-link" href="${esc(q.link)}">Jump to source ↗</a>` : ''}
+      ${(q.tags || []).map(t => `<span class="lit-chip" data-action="lit-tag" data-tag="${esc(LIT_CANON(t))}">${esc(LIT_CANON(t))}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+// "Open note →" for a generated collection note, or "生成笔记" before it exists.
+function litDocLink(kind) {
+  const path = V.LIT + '/' + LIT_COLLECTION_FILES[kind];
+  return app.vault.getAbstractFileByPath(path)
+    ? `<span class="lit-notes-open" data-action="open-vault" data-path="${esc(path)}">打开笔记 →</span>`
+    : `<span class="lit-notes-open" data-action="lit-build">生成笔记</span>`;
+}
+
+function litPaperHead(p) {
+  return `<div class="lit-essay-h" data-action="open-vault" data-path="${esc(p.path)}">
+    <span class="lit-essay-y">${esc(p.year || '—')}</span>
+    <span class="lit-essay-t">${esc(p.title)}</span>
+    <span class="lit-essay-v">${esc(litCite(p.authors, p.year))}${p.venue ? ' · ' + esc(p.venue) : ''}</span>
+  </div>`;
+}
+
+function litTodoList(title, papers) {
+  if (!papers.length) return '';
+  return `<div class="lit-essay-todo">
+    <div class="lit-essay-todo-h">${esc(title)} · ${papers.length}</div>
+    ${papers.map(p => `<div class="lit-essay-todo-i" data-action="open-vault" data-path="${esc(p.path)}">
+      <span>${esc(p.title)}</span><span class="lit-tagn">${esc(litCite(p.authors, p.year))}</span></div>`).join('')}
+  </div>`;
+}
+
+function litGapView() {
+  const papers = litPapers();
+  if (!papers.length) return `<div class="rp-empty">No paper notes yet — sync first.</div>`;
+  const g = litGapCollection(papers, LIT_CANON);
+  const head = `<div class="lit-qhead">Gaps　<span>${g.total} 条 · ${g.groups.length} 篇</span>${litDocLink('gaps')}</div>`;
+  const body = g.groups.length ? g.groups.map(group => `<div class="lit-essay">
+      ${litPaperHead(group.paper)}
+      ${group.items.map(q => litQuoteHtml({ ...q, paper: group.paper }, false)).join('')}
+    </div>`).join('')
+    : `<div class="rp-empty">还没有标为 gap 的句子。在 Zotero 里给指出研究缺口的句子加上 <code>gap</code> 标签（<code>research gap</code>、<code>问题</code>、<code>研究缺口</code> 也算），同步后会汇总到这里。</div>`;
+  return `<div class="lit-qlist lit-essaywrap">${head}${body}${litTodoList('已读但还没标 gap', g.missing)}</div>`;
+}
+
+let _litMatrixQuery = '';
+function litMatrixView() {
+  const rows = litMatrixRows(litPapers());
+  if (!rows.length) return `<div class="rp-empty">No highlighted papers yet — sync first.</div>`;
+  const labels = LIT_BRIEF.map(([, l]) => l);
+  const cell = v => v ? esc(v) : '<span class="lit-dim">—</span>';
+  return `<div class="lit-qlist lit-essaywrap">
+    <div class="lit-qhead">Matrix　<span>${rows.length} 篇 · 内容来自每篇笔记的「速览」表</span>${litDocLink('matrix')}</div>
+    <input type="search" class="lit-matrix-filter" id="lit-matrix-filter" placeholder="筛选：方法、数据集、年份……" value="${esc(_litMatrixQuery)}">
+    <div class="lit-matrix-wrap"><table class="lit-matrix">
+      <thead><tr><th>论文</th><th>年份</th>${labels.map(l => `<th>${esc(l)}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr data-search="${esc([r.paper.title, r.paper.authors, r.paper.year, r.paper.venue, ...r.cells].join(' ').toLowerCase())}">
+        <td><span class="lit-matrix-t" data-action="open-vault" data-path="${esc(r.paper.path)}">${esc(r.paper.title)}</span>
+          <div class="lit-matrix-c">${esc(litCite(r.paper.authors, r.paper.year))}</div></td>
+        <td>${esc(r.paper.year || '—')}</td>
+        ${r.cells.map(c => `<td>${cell(c)}</td>`).join('')}
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
+function litBindMatrixFilter() {
+  const input = $('lit-matrix-filter'); if (!input) return;
+  const apply = () => {
+    _litMatrixQuery = input.value;
+    const q = input.value.trim().toLowerCase();
+    for (const tr of dv.container.querySelectorAll('.lit-matrix tbody tr')) tr.hidden = !!q && !tr.dataset.search.includes(q);
+  };
+  input.addEventListener('input', apply);
+  apply();
 }
 
 function litEssayView() {
-  const rows = litParseEssays();
-  const done = rows.filter(r => r.text);
-  const todo = rows.filter(r => !r.text && r.n > 0);
-  const unread = rows.filter(r => !r.text && !r.n).length;
-
-  if (!rows.length) return `<div class="rp-empty">No paper notes yet — sync first.</div>`;
-
-  const head = `<div class="lit-qhead">Synthesis　<span>${done.length} / ${rows.length}</span>` +
-    (done.length ? `<button type="button" class="act-btn lit-copy" data-action="lit-copy-essays">Copy all</button>` : '') +
-    `</div>`;
-
-  const body = done.length ? done.map(r => `
-    <div class="lit-essay">
-      <div class="lit-essay-h" data-action="open-vault" data-path="${esc(r.path)}">
-        <span class="lit-essay-y">${esc(r.year || '—')}</span>
-        <span class="lit-essay-t">${esc(r.paper)}</span>
-        <span class="lit-essay-v">${esc(r.venue)}</span>
-      </div>
-      <div class="lit-essay-b">${esc(r.text).replace(/\n/g, '<br>')}</div>
+  const papers = litPapers();
+  if (!papers.length) return `<div class="rp-empty">No paper notes yet — sync first.</div>`;
+  const syn = litSynthesisGroups(papers);
+  const head = `<div class="lit-qhead">Synthesis　<span>${syn.written} / ${papers.length} 篇 · 按主题分组</span>` +
+    (syn.written ? `<button type="button" class="act-btn lit-copy" data-action="lit-copy-essays">Copy all</button>` : '') +
+    litDocLink('synthesis') + `</div>`;
+  const body = syn.written ? syn.groups.map(g => `<div class="lit-topic">
+      <div class="lit-topic-h">${esc(g.topic)}<span>${g.papers.length}</span></div>
+      ${g.papers.map(p => `<div class="lit-essay">
+        ${litPaperHead(p)}
+        <div class="lit-essay-b">${esc(p.essay).replace(/\n/g, '<br>')}<span class="lit-cite">（${esc(litCite(p.authors, p.year))}）</span></div>
+      </div>`).join('')}
     </div>`).join('')
-    : `<div class="rp-empty">还没写过。打开任意一篇笔记，在 <code>## 综述段落</code> 下面写一段 —— 上面折叠的素材块里已经把 gap、方法和你的笔记摆好了。</div>`;
-
-  const rest = (todo.length || unread) ? `
-    <div class="lit-essay-todo">
-      <div class="lit-essay-todo-h">Not written</div>
-      ${todo.map(r => `<div class="lit-essay-todo-i" data-action="open-vault" data-path="${esc(r.path)}">
-        <span>${esc(r.paper)}</span><span class="lit-tagn">${r.n} marks</span></div>`).join('')}
-      ${unread ? `<div class="lit-essay-todo-i lit-dim"><span>${unread} unread</span><span class="lit-tagn">0</span></div>` : ''}
-    </div>` : '';
-
-  return `<div class="lit-qlist lit-essaywrap">${head}${body}${rest}</div>`;
+    : `<div class="rp-empty">还没写过。打开任意一篇笔记，在 <code>## 综述段落</code> 下面写一段；在 frontmatter 的 <code>topics</code> 里填主题（如 <code>topics: [复习与记忆]</code>），这里就会按主题分组。</div>`;
+  return `<div class="lit-qlist lit-essaywrap">${head}${body}${litTodoList('已读但还没写综述段落', syn.notWritten)}</div>`;
 }
 
-const litEssayCount = () => litParseEssays().filter(r => r.text).length;
+const litEssayCount = () => litPapers().filter(p => p.essay).length;
+
+// Writes the four collection notes into V.LIT. Reads the paper notes straight from disk:
+// right after a sync the vault index has not caught up with the files just written.
+async function litWriteCollections(quiet) {
+  try {
+    if (!(await app.vault.adapter.exists(ZOT.OUT))) { if (!quiet) new Notice('还没有文献笔记，先同步 Zotero'); return 0; }
+    const listing = await app.vault.adapter.list(ZOT.OUT);
+    const papers = [];
+    for (const path of (listing.files || []).filter(p => p.endsWith('.md'))) {
+      const raw = await app.vault.adapter.read(path);
+      if (litFrontmatter(raw).type === 'paper') papers.push(litPaperFromNote(raw, path));
+    }
+    if (!papers.length) { if (!quiet) new Notice('还没有文献笔记，先同步 Zotero'); return 0; }
+    const now = new Date();
+    const docs = litCollectionDocs(papers, LIT_CANON, todayStr() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()));
+    try { if (!(await app.vault.adapter.exists(V.LIT))) await app.vault.adapter.mkdir(V.LIT); } catch (_e) {}
+    for (const [kind, doc] of Object.entries(docs)) {
+      const path = V.LIT + '/' + LIT_COLLECTION_FILES[kind];
+      const existing = (await app.vault.adapter.exists(path)) ? await app.vault.adapter.read(path) : null;
+      await app.vault.adapter.write(path, litMergeCollection(existing, doc.head, doc.body));
+    }
+    if (!quiet) new Notice(`合集已更新 · ${papers.length} 篇论文 → ${V.LIT}/`);
+    setTimeout(loadLiterature, 600);
+    return papers.length;
+  } catch (e) {
+    new Notice('更新合集失败：' + (e && e.message ? e.message : e));
+    return 0;
+  }
+}
 
 // ── Notes: the thoughts document, read back ─────────────────────
 // The document zotSync writes is the source here, so this view shows exactly
@@ -2926,55 +2953,32 @@ function litNotesView() {
 }
 
 async function litCopyEssays() {
-  const rows = litParseEssays().filter(r => r.text);
-  const md = rows.map(r => `### ${r.paper}${r.year ? ' (' + r.year + ')' : ''}\n\n${r.text}\n`).join('\n');
-  try { await navigator.clipboard.writeText(md); zotNotice(`Copied ${rows.length} paragraphs`); }
+  const syn = litSynthesisGroups(litPapers());
+  try { await navigator.clipboard.writeText(litSynthesisPlain(syn)); zotNotice(`已复制 ${syn.written} 段（按主题分组，附引用）`); }
   catch (_e) { zotNotice('Copy failed'); }
 }
 
 function litTagView() {
-  const quotes = litParseQuotes();
-  if (!quotes.length) return `<div class="rp-empty">No marks parsed yet — sync first.</div>`;
-
-  const counts = new Map();
-  for (const q of quotes) {
-    const ts = q.tags.length ? q.tags : [LIT_UNTAGGED];
-    for (const t of ts) counts.set(t, (counts.get(t) || 0) + 1);
-  }
-  const tags = [...counts.entries()]
-    .filter(([t]) => t !== LIT_UNTAGGED)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const untagged = counts.get(LIT_UNTAGGED) || 0;
+  const papers = litPapers();
+  const { tags, untagged } = litTagCollection(papers, LIT_CANON);
+  if (!tags.length && !untagged.length) return `<div class="rp-empty">No marks parsed yet — sync first.</div>`;
 
   let sel = String(LS('lit_tag', ''));
-  if (sel !== LIT_UNTAGGED && !counts.has(sel)) sel = tags.length ? tags[0][0] : LIT_UNTAGGED;
+  if (sel !== LIT_UNTAGGED && !tags.some(t => t.tag === sel)) sel = tags.length ? tags[0].tag : LIT_UNTAGGED;
 
-  const row = (t, n, label) => `<div class="lit-tagrow${sel === t ? ' lit-tagrow-on' : ''}" data-action="lit-tag" data-tag="${esc(t)}">` +
-    `<span class="lit-tagname">${esc(label != null ? label : t)}</span><span class="lit-tagn">${n}</span></div>`;
+  const row = (t, n, sub, label) => `<div class="lit-tagrow${sel === t ? ' lit-tagrow-on' : ''}" data-action="lit-tag" data-tag="${esc(t)}">` +
+    `<span class="lit-tagname">${esc(label != null ? label : t)}</span><span class="lit-tagn">${n}${sub ? ' · ' + sub + ' 篇' : ''}</span></div>`;
+  const left = tags.map(t => row(t.tag, t.items.length, t.paperCount)).join('') +
+    (untagged.length ? `<div class="lit-tagsep"></div>` + row(LIT_UNTAGGED, untagged.length, 0, 'Untagged') : '');
 
-  const left = tags.map(([t, n]) => row(t, n)).join('') +
-    (untagged ? `<div class="lit-tagsep"></div>` + row(LIT_UNTAGGED, untagged, 'Untagged') : '');
-
-  const picked = quotes.filter(q => sel === LIT_UNTAGGED ? !q.tags.length : q.tags.includes(sel));
-  const right = picked.length ? picked.map(q => `
-    <div class="lit-q">
-      <div class="lit-q-src">${esc(q.paper)}${q.section ? '　·　' + esc(q.section) : ''}${q.page ? '　·　p.' + esc(q.page) : ''}</div>
-      <div class="lit-q-text">${esc(q.text)}</div>
-      ${q.zh ? `<div class="lit-q-zh">${esc(q.zh)}</div>` : ''}
-      ${q.mine.map(m => `<div class="lit-q-mine">我：${esc(m)}</div>`).join('')}
-      <div class="lit-q-foot">
-        <span class="lit-q-link" data-action="open-vault" data-path="${esc(q.path)}">Open note →</span>
-        ${q.link ? `<a class="lit-q-link" href="${esc(q.link)}">Jump to source ↗</a>` : ''}
-        ${q.tags.filter(t => t !== sel).map(t => `<span class="lit-chip" data-action="lit-tag" data-tag="${esc(t)}">${esc(t)}</span>`).join('')}
-      </div>
-    </div>`).join('') : `<div class="rp-empty">Nothing under this tag.</div>`;
-
+  const picked = sel === LIT_UNTAGGED ? untagged : (tags.find(t => t.tag === sel) || { items: [] }).items;
   const title = sel === LIT_UNTAGGED ? 'Untagged' : sel;
+  const paperCount = new Set(picked.map(q => q.paper.path)).size;
   return `<div class="lit-taglayout">
     <div class="lit-taglist">${left}</div>
     <div class="lit-qlist">
-      <div class="lit-qhead">${esc(title)}　<span>${picked.length}</span></div>
-      ${right}
+      <div class="lit-qhead">${esc(title)}　<span>${picked.length} 条 · ${paperCount} 篇 · 同义标签已合并</span>${litDocLink('tags')}</div>
+      ${picked.length ? picked.map(q => litQuoteHtml(q, true)).join('') : `<div class="rp-empty">Nothing under this tag.</div>`}
     </div>
   </div>`;
 }
@@ -2982,7 +2986,9 @@ function litTagView() {
 async function loadLiterature() {
   const tbl = $('lit-table'); if (!tbl) return;
   const raw = String(LS('lit_mode', 'all'));
-  const mode = ['read', 'tag', 'essay', 'notes'].includes(raw) ? raw : 'all';
+  const mode = ['gap', 'matrix', 'read', 'tag', 'essay', 'notes'].includes(raw) ? raw : 'all';
+  const viewTitle = $('lit-view-title');
+  if (viewTitle) viewTitle.textContent = { all: 'Papers', gap: 'Gap 合集', matrix: '文献对比矩阵', tag: '标签合集', essay: '综述草稿', read: 'Timeline', notes: 'Notes' }[mode];
   const stamp = Number(LS('zot_synced_at', 0));
   const s = $('lit-synced');
   if (s) s.textContent = stamp ? 'Synced ' + new Date(stamp).toLocaleString() : 'Never synced';
@@ -3014,10 +3020,13 @@ async function loadLiterature() {
   if (st) {
     const tab = (m, v, l) => `<div class="rp-stat lit-tab${mode === m ? ' lit-tab-on' : ''}" data-action="lit-mode" data-mode="${m}">` +
       `<div class="rp-stat-v">${v}</div><div class="rp-stat-l">${l}</div></div>`;
-    const nq = papers.reduce((a, p) => a + p.n, 0);
-    st.innerHTML = tab('all', papers.length, 'Papers') + tab('read', read.length, 'Timeline') +
-      tab('tag', nq, 'Tags') +
+    const core = litPapers();
+    st.innerHTML = tab('all', papers.length, 'Papers') +
+      tab('gap', litGapCollection(core, LIT_CANON).total, 'Gaps') +
+      tab('matrix', litMatrixRows(core).length, 'Matrix') +
+      tab('tag', litTagCollection(core, LIT_CANON).tags.length, 'Tags') +
       tab('essay', litEssayCount(), 'Synthesis') +
+      tab('read', read.length, 'Timeline') +
       tab('notes', litThoughtCount(), 'Notes');
   }
 
@@ -3027,6 +3036,8 @@ async function loadLiterature() {
   }
 
   if (mode === 'read') { tbl.innerHTML = litTimeline(read); return; }
+  if (mode === 'gap') { tbl.innerHTML = litGapView(); return; }
+  if (mode === 'matrix') { tbl.innerHTML = litMatrixView(); litBindMatrixFilter(); return; }
   if (mode === 'notes') { tbl.innerHTML = litNotesView(); return; }
   if (mode === 'essay') {
     await litPrimeRaw();
@@ -3034,7 +3045,6 @@ async function loadLiterature() {
     return;
   }
   if (mode === 'tag') {
-    if (!_litQuotes) tbl.innerHTML = `<div class="rp-empty">Loading…</div>`;
     await litPrimeRaw();
     tbl.innerHTML = litTagView();
     return;
@@ -5263,10 +5273,7 @@ function questionPoolBody(records){
 }
 
 async function ensureQuestionPoolFile(){
-  let f=app.vault.getAbstractFileByPath(QPOOL_PATH);
-  if(f) return f;
-  try { await app.vault.createFolder(V.CAPTURE); } catch(_e){}
-  return await app.vault.create(QPOOL_PATH, questionPoolBody([]));
+  return ensureVaultFile(QPOOL_PATH, questionPoolBody([]), V.CAPTURE);
 }
 
 async function readQuestionPool(){
@@ -5553,6 +5560,7 @@ _root.addEventListener('click', e => {
     else if (a==='lit-mode')       setLitMode(t.dataset.mode);
     else if (a==='lit-tag')        setLitTag(t.dataset.tag);
     else if (a==='lit-copy-essays') litCopyEssays();
+    else if (a==='lit-build')      litWriteCollections(false);
     else if (a==='nav')            switchView(t.dataset.view, dv.container.querySelector('.nav-item[data-view="'+t.dataset.view+'"]'));
     else if (a==='qa')             quickAction(t.dataset.key);
     else if (a==='complete-vault-task') completeVaultTask(t.dataset.path, t.dataset.line, t.dataset.text);
