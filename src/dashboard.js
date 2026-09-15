@@ -4624,6 +4624,7 @@ async function doPunch(key, cat) {
     const d = new Date();
     const at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     const last = list.length ? list[list.length - 1] : null;
+    const carried = punchCarriedRunning(await punchLoad(dayBefore(date)), list, hMins(at));
 
     // Each activity button is a toggle: lit means running, press it again and
     // it stops. The old Break button meant "pause" or "resume" depending on a
@@ -4631,9 +4632,14 @@ async function doPunch(key, cat) {
     // kind of friction that killed the previous two attempts at timing.
     let entry;
     if (key === 'in') {
-      entry = (last && last.key === 'in' && last.cat === cat)
-        ? { at, key: 'break', cat: '' }
-        : { at, key: 'in', cat: cat || '' };
+      const runningCat = last && last.key === 'in' ? last.cat : carried;
+      if (runningCat && runningCat === cat) {
+        entry = { at, key: 'break', cat: '' };
+      } else {
+        // switching away from last night's session closes it first, so it stitches to midnight
+        if (carried) list.push({ at, key: 'break', cat: '' });
+        entry = { at, key: 'in', cat: cat || '' };
+      }
     } else {
       entry = { at, key, cat: '' };
     }
@@ -4682,9 +4688,12 @@ const lastActiveCat = list => {
 async function loadPunch() {
   const row = $('punch-row'); if (!row) return;
   const list = await punchLoad(todayStr());
+  const prevList = await punchLoad(dayBefore(todayStr()));
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  const carried = punchCarriedRunning(prevList, list, nowMins);
 
   const last = list.length ? list[list.length - 1] : null;
-  const running = last && last.key === 'in' ? last.cat : null;
+  const running = last && last.key === 'in' ? last.cat : (carried || null);
   // Nothing is running: leave a dot on the one you stopped, so picking it back
   // up does not mean recalling what you were doing.
   const paused = running ? '' : lastActiveCat(list);
@@ -4694,7 +4703,7 @@ async function loadPunch() {
     `${on && c ? ` style="--punch-bg:${c.bg};--punch-fg:${c.fg}"` : ''}><span class="punch-l">${label}</span>${at ? `<span class="punch-t">${at}</span>` : ''}</button>`;
 
   const wake = lastOf('wake');
-  const carry = punchCarry(await punchLoad(dayBefore(todayStr())), list);
+  const carry = punchCarry(prevList, list) || carried;
   const totals = punchTotals(list, carry);
   row.innerHTML =
     btn('wake', '', 'Wake', '', last && last.key === 'wake') +
@@ -4704,7 +4713,7 @@ async function loadPunch() {
       running === c.key, c, paused === c.key)).join('') +
     `<span class="punch-sep"></span>` +
     btn('out', '', 'End', '', last && last.key === 'out') +
-    `<span class="punch-sum">${punchSummary(list, totals)}</span>`;
+    `<span class="punch-sum">${punchSummary(list, totals, carry)}</span>`;
 }
 
 // Every in→(break|out|other in) span, carrying the activity it belongs to.
@@ -4729,10 +4738,13 @@ function punchSpans(list, carryCat) {
 // the day it started, the rest is credited to the next day — what the calendar
 // grid has to draw anyway. Punches are filed under the date the button was
 // pressed, so the two halves sit in different sections of the punch document
-// and have to be stitched back together here. The stitch only happens when the
-// next day actually closes the session (its first punch is Break or End); an
-// `in` left dangling with nothing after it is a forgotten End, not an
+// and have to be stitched back together here. The stitch happens when the next
+// day closes the session: its first punch is Break or End, or — pressed before the
+// button showed the session as running — the same activity again, with no Wake
+// before it and within PUNCH_CARRY_MAX of the start. Anything else (an `in` left
+// dangling overnight, followed by the morning's Wake) is a forgotten End, not an
 // all-night shift, so it stays uncounted rather than billed to midnight.
+const PUNCH_CARRY_MAX = 8 * 60;
 function dayBefore(ds) {
   const d = new Date(String(ds) + 'T12:00:00');
   d.setDate(d.getDate() - 1);
@@ -4745,9 +4757,23 @@ function punchCarry(prevList, list) {
   if (!prevList || !prevList.length) return '';
   const { open, cat } = punchSpans(prevList);
   if (open == null) return '';
-  const first = (list || []).find(p => p.key === 'in' || p.key === 'break' || p.key === 'out');
-  if (!first || first.key === 'in') return '';
-  return cat || 'other';
+  const items = list || [];
+  const idx = items.findIndex(p => p.key === 'in' || p.key === 'break' || p.key === 'out');
+  if (idx < 0) return '';
+  const first = items[idx];
+  if (first.key !== 'in') return cat || 'other';
+  const woke = items.slice(0, idx).some(p => p.key === 'wake');
+  const elapsed = 24 * 60 - hMins(open) + hMins(first.at);
+  return !woke && first.cat === cat && elapsed <= PUNCH_CARRY_MAX ? (cat || 'other') : '';
+}
+
+// Before anything is pressed today, a session still open at midnight is the one running —
+// until Wake, or until it would be longer than PUNCH_CARRY_MAX.
+function punchCarriedRunning(prevList, list, nowMins) {
+  if (!prevList || !prevList.length || (list || []).length) return '';
+  const { open, cat } = punchSpans(prevList);
+  if (open == null || !cat) return '';
+  return 24 * 60 - hMins(open) + nowMins <= PUNCH_CARRY_MAX ? cat : '';
 }
 
 // Spans for one day of a newest-first day list, both midnight edges resolved.
@@ -4773,11 +4799,11 @@ function punchTotals(list, carryCat) {
   return { byCat, total };
 }
 
-function punchSummary(list, totals) {
-  if (!list.length) return '';
-  const t = totals || punchTotals(list);
+function punchSummary(list, totals, carryCat) {
+  if (!list.length && !carryCat) return '';
+  const t = totals || punchTotals(list, carryCat);
   const wake = list.find(p => p.key === 'wake');
-  const { open } = punchSpans(list);
+  const { open } = punchSpans(list, carryCat);
   const out = [...list].reverse().find(p => p.key === 'out');
   return [wake ? 'up ' + wake.at : '', t.total ? 'tracked ' + hFmt(t.total) : '',
     open != null ? 'running' : (out ? 'ended ' + out.at : '')]

@@ -13,7 +13,9 @@ A row of buttons on the Dashboard: **Wake**, **Research**, **Work**, **Social**,
 - **Activity buttons are toggles**: press one to start, press another to switch straight over, press the lit one to pause. Switching takes one tap.
 - **End** closes the day; **↩ Undo** removes the last press after a mis-tap.
 - Punches are stored in `Console/Clock.md`, newest day first, one line per press — `- 08:30 in research`, `- 11:50 break`. It's an ordinary note you can edit by hand. Daily notes embed the day's section with `![[Clock#<date>]]` instead of copying it.
-- **A session that runs past midnight is split at 24:00**, the rest credited to the next day. An activity started with nothing after it is treated as a forgotten End and not counted.
+- **A session that runs past midnight is split at 24:00**: the evening stays on its day, the rest goes to the next.
+  - After midnight and before you press Wake, last night's unfinished activity **still shows as running**: press it again to stop, another activity to switch, or End to finish.
+  - So a forgotten End isn't billed as an all-nighter, a session is treated as forgotten — and not counted — once you press **Wake** in the morning or it would run past **8 hours**.
 
 ## The Time tab
 

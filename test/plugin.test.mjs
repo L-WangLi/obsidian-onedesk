@@ -276,3 +276,70 @@ test("plugin still loads on an Obsidian without AbstractInputSuggest", async () 
   await plugin.ready;
   assert.ok(plugin.settings);
 });
+
+// ── punch clock across midnight ──────────────────────────────────
+function extractFunctions(names) {
+  return names.map(name => {
+    const start = dashboardSource.indexOf(`function ${name}(`);
+    assert.ok(start >= 0, name);
+    let depth = 0, i = dashboardSource.indexOf("{", start);
+    for (; i < dashboardSource.length; i++) {
+      if (dashboardSource[i] === "{") depth++;
+      else if (dashboardSource[i] === "}" && --depth === 0) break;
+    }
+    return dashboardSource.slice(start, i + 1);
+  }).join("\n");
+}
+const punch = vm.runInNewContext(
+  "const PUNCH_CARRY_MAX = 8 * 60; const pad = n => String(n).padStart(2, '0');" +
+  "function dateKey(date = new Date()) { const d = new Date(date); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }" +
+  extractFunctions(["hMins", "punchSpans", "dayBefore", "punchCarry", "punchCarriedRunning", "punchDaySpans"]) +
+  "; ({ punchCarry, punchCarriedRunning, punchDaySpans });");
+const P = s => s.trim().split("\n").map(l => { const [at, key, cat] = l.trim().split(/\s+/); return { at, key, cat: cat || "" }; });
+const minutes = spans => spans.reduce((a, [s, e]) => a + (+e.slice(0, 2) * 60 + +e.slice(3)) - (+s.slice(0, 2) * 60 + +s.slice(3)), 0);
+
+test("a session past midnight, stopped by pressing the same activity, is counted on both days", () => {
+  // the log that showed the bug: Research from 22:10, then Research + End at 00:53
+  const days = [
+    { date: "2026-09-16", list: P("00:53 in research\n00:53 out") },
+    { date: "2026-09-15", list: P("06:33 wake\n06:34 in research\n09:14 break\n11:44 in research\n11:57 break\n11:57 in work\n17:05 break\n18:04 in work\n19:08 break\n22:10 in research") },
+  ];
+  const d15 = punch.punchDaySpans(days, 1), d16 = punch.punchDaySpans(days, 0);
+  assert.deepEqual(plain(d15.spans.at(-1)), ["22:10", "24:00", "research"]);
+  assert.deepEqual(plain(d16.spans), [["00:00", "00:53", "research"]]);
+  assert.equal(minutes(d15.spans) + minutes(d16.spans), 160 + 13 + 308 + 64 + 110 + 53);
+});
+
+test("an explicit End or Break after midnight still closes last night's session", () => {
+  for (const close of ["01:10 out", "01:10 break"]) {
+    const days = [{ date: "2026-09-16", list: P(close) }, { date: "2026-09-15", list: P("23:00 in work") }];
+    assert.deepEqual(plain(punch.punchDaySpans(days, 1).spans), [["23:00", "24:00", "work"]]);
+    assert.deepEqual(plain(punch.punchDaySpans(days, 0).spans), [["00:00", "01:10", "work"]]);
+  }
+});
+
+test("a forgotten End overnight is still not billed to the night", () => {
+  const withWake = [{ date: "2026-09-16", list: P("07:30 wake\n08:00 in research\n11:00 break") }, { date: "2026-09-15", list: P("22:10 in research") }];
+  assert.deepEqual(plain(punch.punchDaySpans(withWake, 1).spans), []);
+  assert.deepEqual(plain(punch.punchDaySpans(withWake, 0).spans), [["08:00", "11:00", "research"]]);
+  const tooLong = [{ date: "2026-09-16", list: P("09:00 in research\n10:00 break") }, { date: "2026-09-15", list: P("22:10 in research") }];
+  assert.deepEqual(plain(punch.punchDaySpans(tooLong, 1).spans), []);
+  const otherActivity = [{ date: "2026-09-16", list: P("00:30 in work\n01:00 break") }, { date: "2026-09-15", list: P("23:00 in research") }];
+  assert.deepEqual(plain(punch.punchDaySpans(otherActivity, 0).spans), [["00:30", "01:00", "work"]]);
+});
+
+test("after midnight the dashboard shows last night's session as running until Wake or 8 hours", () => {
+  const prev = P("22:10 in research");
+  assert.equal(punch.punchCarriedRunning(prev, [], 53), "research");
+  assert.equal(punch.punchCarriedRunning(prev, [], 6 * 60 + 10), "research"); // 22:10 → 06:10 is exactly 8h
+  assert.equal(punch.punchCarriedRunning(prev, [], 6 * 60 + 30), "");       // 22:10 → 06:30 is over 8h
+  assert.equal(punch.punchCarriedRunning(prev, P("00:20 wake"), 30), "");   // anything pressed today decides
+  assert.equal(punch.punchCarriedRunning(P("22:10 in research\n23:00 out"), [], 30), "");
+});
+
+test("pressing buttons after midnight writes a closing line for last night's session", () => {
+  const body = dashboardSource.slice(dashboardSource.indexOf("async function doPunch("), dashboardSource.indexOf("async function loadPunch("));
+  assert.match(body, /const carried = punchCarriedRunning\(await punchLoad\(dayBefore\(date\)\), list, hMins\(at\)\);/);
+  assert.match(body, /if \(runningCat && runningCat === cat\) \{\s*entry = \{ at, key: 'break', cat: '' \};/);
+  assert.match(body, /if \(carried\) list\.push\(\{ at, key: 'break', cat: '' \}\);/);
+});
