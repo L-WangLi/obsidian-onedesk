@@ -4,6 +4,8 @@
 
 一站式的 Obsidian 工作台。在一个视图里集中今天的任务、项目进展、打卡计时、读书与文献笔记、写作练习和英语口语日课——所有内容都读写自 vault 里的普通 Markdown 笔记。
 
+![OneDesk 首页](docs/screenshots/01-dashboard.webp)
+
 ## 功能
 
 | 页面 | 作用 |
@@ -18,6 +20,45 @@
 | **Time** | 按活动打卡；今日环形图、本周日历、时间去向，以及与作息计划的对比 |
 
 不用的页面可以在设置里关闭。
+
+## 截图
+
+所有截图使用插件自带的虚构示例笔记。
+
+### Projects · 项目
+每个项目的下一步、已完成任务和生活日志，以及所有项目合并的时间线。
+
+![Projects](docs/screenshots/02-projects.webp)
+
+### Files · 文件
+浏览文件夹与最近修改的笔记，右侧预览可直接编辑。
+
+![Files](docs/screenshots/03-files.webp)
+
+### Literature · 文献
+从 Zotero 合集导入的论文，含划线数、阅读记录与状态。
+
+![Literature](docs/screenshots/04-literature.webp)
+
+### Reading · 阅读
+书籍数、阅读时长、划线与最近的想法。
+
+![Reading](docs/screenshots/05-reading.webp)
+
+### English · 英语
+根据你前一天做过的事生成今天的口语题，附一周计划、练习记录和积累的表达。
+
+![English](docs/screenshots/06-english.webp)
+
+### Writing · 写作
+来自 Zotero 合集的学术写作练习，以及公开写作的进度。
+
+![Writing](docs/screenshots/07-writing.webp)
+
+### Time · 时间
+作息指标、今日计划与实际对比、本周日历、时间去向，以及最近 14 天的记录。
+
+![Time](docs/screenshots/08-time.webp)
 
 ## 需要
 
@@ -80,6 +121,7 @@ OneDesk 没有数据库，每张卡片都是普通笔记的视图。约定如下
 ## 仅电脑端可用的部分
 
 - 文献页的 **Zotero 同步** 通过 `sqlite3` 命令行工具读取 Zotero 数据库，会在 `/usr/bin`、`/opt/homebrew/bin`、`/usr/local/bin` 中查找（macOS、Linux）。生成的笔记在任何设备上都能查看。
+- 写作页的 **Research writing** 从设置中「写作素材合集」指定的 Zotero 合集提取术语与句式。填写之前不会读取 Zotero；素材建立后手机端也能使用。
 - 其他功能在手机端都可以使用。
 
 ## 开发

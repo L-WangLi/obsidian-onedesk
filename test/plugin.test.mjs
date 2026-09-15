@@ -193,3 +193,33 @@ test("sample dates are relative to the given day", () => {
   assert.ok(files["Intake/Days/2026-01-09.md"]);
   assert.match(files["Console/Clock.md"], /^## 2026-01-14$/m);
 });
+
+// ── fixes that keep vaults and devices apart ─────────────────────
+test("dashboard reads localStorage only through the vault-scoped helpers", () => {
+  const direct = dashboardSource.split("\n").filter(l => l.includes("localStorage."));
+  assert.equal(direct.length, 2);
+  for (const l of direct) assert.match(l, /LS_PREFIX \+ k/);
+  assert.match(dashboardSource, /const LS_PREFIX = 'onedesk:' \+ \(app\.appId/);
+});
+
+test("heatmap follows the current year", () => {
+  assert.ok(!dashboardSource.includes("new Date(2025, 11, 29)"));
+  assert.ok(!dashboardSource.includes('<div class="hm-year">2026</div>'));
+});
+
+test("writing tab leaves Zotero alone until a collection is chosen", () => {
+  assert.match(dashboardSource, /if \(nodeOK && zotChosen && !_wtBuilding\)/);
+  assert.match(dashboardSource, /const zotChosen = !!\(CFG\.vault && CFG\.vault\.ZOT_ROOT\)/);
+});
+
+test("sample banner is a self-contained original SVG", () => {
+  const svg = files["Media/banner.svg"];
+  assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+  assert.ok(!/<image|href=|url\(http/i.test(svg));
+  assert.ok(svg.length < 4000);
+});
+
+test("heatmap lays out one column per week", () => {
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.heatmap-grid\{[^}]*grid-template-rows:repeat\(7,auto\);grid-auto-flow:column/);
+});

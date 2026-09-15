@@ -6,6 +6,8 @@ An all-in-one dashboard for Obsidian. One view brings together today's tasks, pr
 
 > The interface is currently in Chinese. English UI is planned.
 
+![OneDesk dashboard](docs/screenshots/01-dashboard.webp)
+
 ## Features
 
 | Tab | What it does |
@@ -20,6 +22,45 @@ An all-in-one dashboard for Obsidian. One view brings together today's tasks, pr
 | **Time** | Punch in and out by activity; today as a donut, the week as a calendar grid, where the time went, and plan vs. actual against your schedule |
 
 Tabs you don't use can be switched off in settings.
+
+## Screenshots
+
+All screenshots use the fictional sample notes that ship with the plugin.
+
+### Projects
+Next actions, completed tasks and life-log entries per project, plus one timeline across all projects.
+
+![Projects](docs/screenshots/02-projects.webp)
+
+### Files
+Browse folders and recent notes; the preview on the right is editable.
+
+![Files](docs/screenshots/03-files.webp)
+
+### Literature
+Papers imported from a Zotero collection, with highlights, reading sessions and status.
+
+![Literature](docs/screenshots/04-literature.webp)
+
+### Reading
+Books, hours, highlights and your latest thoughts from exported book notes.
+
+![Reading](docs/screenshots/05-reading.webp)
+
+### English
+Today's speaking prompt built from what you did yesterday, the weekly plan, the log and the phrases worth keeping.
+
+![English](docs/screenshots/06-english.webp)
+
+### Writing
+Research writing practice (from your Zotero collection) and the public writing pipeline.
+
+![Writing](docs/screenshots/07-writing.webp)
+
+### Time
+Rhythm metrics, today against your schedule, the week as a calendar, where the time went, and a 14-day log.
+
+![Time](docs/screenshots/08-time.webp)
 
 ## Requirements
 
@@ -93,6 +134,7 @@ Many sync tools don't carry a plugin's own `data.json`. Click **创建配置文�
 ## Desktop-only parts
 
 - **Zotero sync** on the Literature tab reads Zotero's database through the `sqlite3` command-line tool, found in `/usr/bin`, `/opt/homebrew/bin` or `/usr/local/bin` (macOS and Linux). Notes it creates can be read on any device.
+- **Research writing** on the Writing tab builds its phrase index from the Zotero collection set in settings (写作素材合集). Zotero is not read until that is set, and the index, once built, can be used on mobile.
 - Everything else works on mobile.
 
 ## Development

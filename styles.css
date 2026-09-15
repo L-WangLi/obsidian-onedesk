@@ -17,7 +17,7 @@
 #db26 .heatmap-strip{background:var(--bg2);border-bottom:.5px solid var(--border);padding:10px 22px 11px}
 #db26 .hm-inner{display:flex;align-items:center;gap:10px}
 #db26 .hm-year{font-size:12px;color:var(--text4);width:28px;flex-shrink:0}
-#db26 .heatmap-grid{display:grid;grid-template-columns:repeat(52,1fr);gap:2px;flex:1;min-height:10px}
+#db26 .heatmap-grid{display:grid;grid-template-columns:repeat(52,1fr);grid-template-rows:repeat(7,auto);grid-auto-flow:column;gap:2px;flex:1;min-height:10px}
 #db26 .hm-cell{border-radius:2px;background:#ede9e1;cursor:pointer;width:100%;padding-bottom:100%}
 #db26 .hm-l1{background:#c8e6c9}#db26 .hm-l2{background:#81c784}#db26 .hm-l3{background:#388e3c}#db26 .hm-l4{background:#1b5e20}
 #db26 .hm-months{display:flex;justify-content:space-between;padding-left:38px;margin-top:4px}

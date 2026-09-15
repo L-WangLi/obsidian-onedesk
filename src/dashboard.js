@@ -110,7 +110,9 @@ const V_PROJ_HOME = new RegExp('^' + vEsc(V.PROJECTS) + '/.+/' + vEsc(V.HOME_MD)
 const V_HOME_TAIL = new RegExp('/' + vEsc(V.HOME_MD) + '$');
 
 // ── Banner image ───────────────────────────────────────────────
-const _bannerFile = app.vault.getAbstractFileByPath(V.BANNER);
+// V.BANNER, or else any banner.<image> in the attachments folder.
+const _bannerFile = app.vault.getAbstractFileByPath(V.BANNER)
+  || ['jpg', 'jpeg', 'png', 'webp', 'svg'].map(ext => app.vault.getAbstractFileByPath(V.ATTACH + '/banner.' + ext)).find(Boolean);
 const _bannerSrc = _bannerFile
   ? app.vault.adapter.getResourcePath(_bannerFile.path) : '';
 
@@ -178,7 +180,7 @@ dv.container.innerHTML = `<div id="db26">
 
 <div class="heatmap-strip">
   <div class="hm-inner">
-    <div class="hm-year">2026</div>
+    <div class="hm-year">${new Date().getFullYear()}</div>
     <div class="heatmap-grid" id="hmap"></div>
   </div>
   <div class="hm-months"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span></div>
@@ -220,7 +222,7 @@ dv.container.innerHTML = `<div id="db26">
       </div>
       <div class="card" id="home-project-card" style="padding:8px 12px;margin-top:10px">
         <div class="card-title" style="margin-bottom:6px;display:flex;align-items:baseline;gap:8px;font-size:13px">
-          <span>Project activity态</span>
+          <span>Project activity</span>
           <span class="card-sub" id="home-project-summary"></span>
           <span class="card-sub" data-action="nav" data-view="projects" style="margin-left:auto;cursor:pointer;color:var(--blue)">Full timeline →</span>
         </div>
@@ -368,6 +370,10 @@ const VAULT = (app.vault.getName && app.vault.getName()) || '';
 // ─ Cross-device synced state (persists to vault file, carried by any sync tool) ─
 const STATE_PATH = V.STATE;
 const STATE_KEYS = ['writing_baselines','daily_reviews','daily_notes','heatmap_2026','add_task_area','add_task_context','project_activity_selected','project_rollup_period','pool_mode','zot_synced_at','lit_mode','lit_tag','rp_books','hz_period','en_src','wt_pick','wt_tab','wt_ack'];
+// localStorage is shared by every vault Obsidian opens, so keys carry this vault's id.
+const LS_PREFIX = 'onedesk:' + (app.appId || VAULT) + ':';
+const lsGet = k => localStorage.getItem(LS_PREFIX + k);
+const lsSet = (k, v) => localStorage.setItem(LS_PREFIX + k, v);
 let _stateCache = null;
 let _stateDirty = false;
 let _stateSaveTimer = null;
@@ -384,7 +390,7 @@ async function loadStateFromVault() {
   _stateCache = {};
   for (const k of STATE_KEYS) {
     try {
-      const v = localStorage.getItem(k);
+      const v = lsGet(k);
       if (v != null) _stateCache[k] = JSON.parse(v);
     } catch(_e){}
   }
@@ -405,7 +411,7 @@ const LS  = (k,d) => {
   if (_stateCache != null) {
     return _stateCache[k] != null ? _stateCache[k] : d;
   }
-  try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; }
+  try { return JSON.parse(lsGet(k)) ?? d; } catch { return d; }
 };
 const LSS = (k,v) => {
   // Only whitelisted keys sync to the shared vault state file; everything else
@@ -417,7 +423,7 @@ const LSS = (k,v) => {
     _stateSaveTimer = setTimeout(saveStateToVault, 500);
   }
   // also write to localStorage as warm cache (fast read before vault load)
-  try { localStorage.setItem(k, JSON.stringify(v)); } catch(_e){}
+  try { lsSet(k, JSON.stringify(v)); } catch(_e){}
 };
 function dateKey(date = new Date()) {
   const d = new Date(date);
@@ -690,7 +696,9 @@ function buildHeatmap() {
   const vaultHM = window._db26_vaultHM || {};
   const merged  = Object.assign({}, stored);
   for (const [k,v] of Object.entries(vaultHM)) merged[k] = Math.max(merged[k]||0, v);
-  const start = new Date(2025, 11, 29);
+  // The Monday on or before 1 January of this year.
+  const jan1 = new Date(new Date().getFullYear(), 0, 1);
+  const start = new Date(jan1); start.setDate(1 - (jan1.getDay() + 6) % 7);
   for (let i = 0; i < 364; i++) {
     const d   = new Date(start); d.setDate(d.getDate()+i);
     const key = dateKey(d);
@@ -4201,8 +4209,10 @@ async function wtSection(host) {
   const idx = await wtIndexLoad();
   const nodeOK = !!wtZoteroMtime();
 
-  // rebuild in the background when Zotero has changed since the index was made
-  if (nodeOK && !_wtBuilding) {
+  // Rebuild in the background when Zotero has changed since the index was made — but only
+  // once a collection has been chosen in settings; until then Zotero is not touched unasked.
+  const zotChosen = !!(CFG.vault && CFG.vault.ZOT_ROOT);
+  if (nodeOK && zotChosen && !_wtBuilding) {
     const stale = !idx || wtZoteroMtime() > (idx.dbMtime || 0);
     // Wait out the gap after any attempt, failed ones included — a missing collection
     // would otherwise retry on every redraw.
@@ -4214,11 +4224,12 @@ async function wtSection(host) {
   const status = _wtBuilding ? '<span class="wt-busy">正在从 Zotero 更新写作素材…</span>'
     : idx ? failed + `${idx.stats.papers} 篇 · ${idx.terms.length} 个术语 · 更新于 ${new Date(idx.builtAt).toTimeString().slice(0, 5)} ${dateKey(new Date(idx.builtAt)).slice(5)}` +
       (nodeOK ? '　<span class="nx-skip" data-action="wt-rebuild">立即更新</span>' : '')
-    : failed ? failed + '<span class="nx-skip" data-action="wt-rebuild">重试</span>' : '';
+    : failed ? failed + '<span class="nx-skip" data-action="wt-rebuild">重试</span>'
+    : nodeOK ? '<span class="nx-skip" data-action="wt-rebuild">立即更新</span>' : '';
 
   if (!idx) {
     return `<div class="card rp-card"><div class="card-title">Research writing <span class="card-sub">${status}</span></div>
-      <div class="rp-empty">${_wtBuilding ? '第一次建立写作素材，大约十秒。' : nodeOK ? `还没有写作素材。写作素材来自 Zotero 合集「${esc(V.ZOT_ROOT)}」（含子合集），可在设置中修改。` : '写作素材要在电脑端的 Obsidian 里建立一次，之后手机上也能看。'}</div></div>`;
+      <div class="rp-empty">${_wtBuilding ? '第一次建立写作素材，大约十秒。' : nodeOK ? (zotChosen ? `还没有写作素材。写作素材来自 Zotero 合集「${esc(V.ZOT_ROOT)}」（含子合集）。` : '在设置里填写「写作素材合集」后，会从 Zotero 自动提取术语与句式。') : '写作素材要在电脑端的 Obsidian 里建立一次，之后手机上也能看。'}</div></div>`;
   }
 
   const [gloss, log] = await Promise.all([wtGlossLoad(), wtLogLoad()]);
@@ -5463,10 +5474,10 @@ const DASHBOARD_VIEW_KEY='db26_current_view';
 const DASHBOARD_SCROLL_PREFIX='db26_scroll_';
 let _currentDashboardView='dashboard';
 function dashboardLocalGet(key,fallback){
-  try{return JSON.parse(localStorage.getItem(key))??fallback;}catch(_e){return fallback;}
+  try{return JSON.parse(lsGet(key))??fallback;}catch(_e){return fallback;}
 }
 function dashboardLocalSet(key,value){
-  try{localStorage.setItem(key,JSON.stringify(value));}catch(_e){}
+  try{lsSet(key,JSON.stringify(value));}catch(_e){}
 }
 function dashboardScrollHost(){
   return dv.container.closest('.markdown-preview-view')

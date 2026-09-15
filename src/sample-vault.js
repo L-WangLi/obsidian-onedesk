@@ -24,12 +24,42 @@ function onedeskSampleFiles(now) {
     "- **任务**：写在日记 `Intake/Days/` 里，形如 `- [ ] 内容 #Academic [when:: 日期] [project:: thesis]`",
     "- **生活日志**：`Intake/Log/日期 life log.md`，每行 `- HH:mm · 内容`，带上项目链接就会进入项目时间线",
     "- **打卡**：`Console/Clock.md`，由首页打卡按钮写入",
+    "- **首页横幅**：`Media/banner.svg`（附件文件夹里任意 banner.jpg / png / svg 都可以）",
     "- **倒数日**：`Console/Dates.md`；**等待清单**：`Intake/Pending.md`；**想做清单**：`Scratch/Later.md`",
     "- **阅读**：`Shelf/` 中的读书笔记（📌 划线、💭 想法）",
     "- **文献**：`Sources/Reading/Zotero/`，frontmatter 带 `type: paper`",
     "- **英语 / 写作练习**：`Drills/`；**公开写作**：`Workstreams/Writing/Articles/`",
     "",
     "看完可以整批删除，换成你自己的笔记。",
+  ]);
+
+  // An original banner, drawn for the sample (the hero picks up any banner.* in the attachments folder).
+  add("Media/banner.svg", [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 640" preserveAspectRatio="xMidYMid slice">',
+    "  <defs>",
+    '    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">',
+    '      <stop offset="0" stop-color="#efe2d0"/><stop offset="0.6" stop-color="#e2c9ab"/><stop offset="1" stop-color="#cfae8b"/>',
+    "    </linearGradient>",
+    '    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">',
+    '      <stop offset="0" stop-color="#fbf1e3"/><stop offset="0.7" stop-color="#f3dcc0"/><stop offset="1" stop-color="#f3dcc0" stop-opacity="0"/>',
+    "    </radialGradient>",
+    "  </defs>",
+    '  <rect width="1600" height="640" fill="url(#sky)"/>',
+    '  <circle cx="1120" cy="250" r="190" fill="url(#sun)"/>',
+    '  <circle cx="1120" cy="250" r="96" fill="#f8eadb" opacity="0.9"/>',
+    '  <g fill="none" stroke="#b08a66" stroke-opacity="0.35" stroke-width="1.2">',
+    '    <path d="M0 150 C 260 120 520 175 800 140 S 1340 110 1600 150"/>',
+    '    <path d="M0 190 C 300 160 560 215 820 180 S 1360 150 1600 192"/>',
+    '    <path d="M0 230 C 280 205 600 250 860 222 S 1380 196 1600 234"/>',
+    "  </g>",
+    '  <path d="M0 400 C 180 330 330 300 470 340 C 610 380 720 290 880 260 C 1040 230 1180 330 1330 320 C 1450 312 1530 280 1600 290 L1600 640 L0 640 Z" fill="#c29a74" opacity="0.55"/>',
+    '  <path d="M0 460 C 150 420 300 380 440 410 C 600 445 700 370 860 360 C 1030 350 1130 430 1290 420 C 1420 412 1520 380 1600 390 L1600 640 L0 640 Z" fill="#a67c58" opacity="0.7"/>',
+    '  <path d="M0 530 C 200 490 360 470 520 500 C 700 535 820 470 1000 468 C 1180 466 1300 520 1460 510 C 1530 506 1570 498 1600 500 L1600 640 L0 640 Z" fill="#7f5a3d" opacity="0.85"/>',
+    '  <path d="M0 600 C 240 570 470 560 700 585 C 930 610 1150 572 1380 578 C 1480 581 1550 590 1600 592 L1600 640 L0 640 Z" fill="#5b3f2b"/>',
+    '  <g fill="#fbf1e3" opacity="0.55">',
+    '    <circle cx="240" cy="110" r="2"/><circle cx="420" cy="70" r="1.5"/><circle cx="610" cy="120" r="1.8"/><circle cx="1400" cy="90" r="1.6"/><circle cx="1510" cy="160" r="2"/>',
+    "  </g>",
+    "</svg>",
   ]);
 
   // ── templates ──
@@ -246,8 +276,18 @@ function onedeskSampleFiles(now) {
     "-5": ["07:30 wake", "09:00 in work", "12:00 break", "13:00 in work", "16:40 break", "21:00 in learning", "22:00 break"],
     "-6": ["08:00 wake", "09:30 in research", "11:20 break", "14:00 in learning", "15:30 break", "20:00 in learning", "21:05 break"],
   };
-  for (const offset of ["-1", "-2", "-3", "-4", "-5", "-6"]) {
-    clock.push(`## ${day(Number(offset))}`, "", ...punches[offset].map(p => `- ${p}`), "");
+  // Older weeks follow a steady pattern so the heatmap and weekly charts have some history.
+  const pattern = [
+    ["07:30 wake", "09:00 in research", "12:00 break", "14:00 in work", "17:30 break"],
+    ["07:10 wake", "08:30 in research", "11:40 break", "13:30 in learning", "15:00 break", "20:30 in learning", "21:30 break"],
+    ["08:00 wake", "09:30 in work", "12:30 break", "14:00 in social", "15:30 break"],
+    ["07:20 wake", "08:40 in research", "12:10 break", "13:40 in research", "16:30 in work", "18:00 break"],
+    ["09:00 wake", "10:30 in learning", "11:30 break"],
+  ];
+  for (let i = 7; i <= 27; i++) punches[String(-i)] = i % 7 === 6 ? null : pattern[i % pattern.length];
+  for (let i = 1; i <= 27; i++) {
+    const list = punches[String(-i)];
+    if (list) clock.push(`## ${day(-i)}`, "", ...list.map(p => `- ${p}`), "");
   }
   add("Console/Clock.md", clock);
   add("Console/Dates.md", ["# Dates", "", `- ${day(21)} · 论文中期检查`, `- ${day(6)} · 应用第一版上线`, `- ${day(-60)} · 开始用 OneDesk`]);
