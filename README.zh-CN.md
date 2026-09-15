@@ -2,294 +2,59 @@
 
 [English](README.md) · **中文**
 
-一站式的 Obsidian 工作台，围绕研究生的一天设计。在一个视图里集中今天的任务、项目进展、打卡计时、文献笔记、写作练习和英语口语日课——所有内容都读写自 vault 里的普通 Markdown 笔记。
-
-**为了保持专注**，OneDesk 让每个冒出来的念头都能一键落地：一个问题、一个以后想做的事、一行带时间的碎碎念，记下就回到手头的工作。[看看怎么用 →](#随手记录与每日节奏)
-
-**做文献综述时**，OneDesk 能把一个 Zotero 合集整理成：研究缺口（Gap）合集、文献对比矩阵、标签合集，以及按主题分组的综述草稿。[看看怎么用 →](#研究生文献管理)
+一站式的 Obsidian 工作台，围绕研究生的一天设计：任务与随手的念头、项目、文献、时间、写作和英语练习，都在一个视图里。所有内容都读写自 vault 里的普通 Markdown 笔记。
 
 ![OneDesk 首页](docs/screenshots/01-dashboard.webp)
 
-## 功能
+## 有什么
 
-| 页面 | 作用 |
-| --- | --- |
-| **Dashboard** | 今日任务、添加任务到当天日记、项目看板、打卡、倒数日、等待清单与想做清单、快速入口、活跃度热力图 |
-| **Files** | 三栏浏览 vault：文件夹、笔记列表、可直接编辑的预览 |
-| **Projects** | 每个项目的下一步、已完成任务和生活日志合成一条时间线；另有全部项目的 7 天 / 30 天 / 全部时间线 |
-| **Literature** | 把 Zotero 合集导入为每篇论文一篇笔记，并跨论文汇总研究缺口、对比矩阵、标签合集和综述草稿 |
-| **Reading** | 读书笔记（`📌` 划线、`💭` 想法）的统计与最近想法 |
-| **English** | 固定题型的口语日课（短问答 / 2 分钟独白 / 抽象展开），题目内容来自你当天做过的事，并积累表达 |
-| **Writing** | 从文献中提取学术句式做练习；公开写作按 idea → draft → published 管理 |
-| **Time** | 按活动打卡；今日环形图、本周日历、时间去向，以及与作息计划的对比 |
+- **首页**：今日任务；一个输入框，念头打断你时一键记下问题或「以后想做」的事；日记、碎碎念、复盘的快速入口；打卡和倒数日。[详细介绍 →](docs/zh-CN/dashboard.md)
+- **文献**：把 Zotero 合集整理成研究缺口（Gap）合集、文献对比矩阵、标签合集和按主题分组的综述草稿。[详细介绍 →](docs/zh-CN/literature.md)
+- **项目**：每个项目的下一步和进展时间线，以及所有项目合并的总时间线。[详细介绍 →](docs/zh-CN/projects.md)
+- **时间**：一键打卡，计划与实际对比，黄金时段利用率等作息指标。[详细介绍 →](docs/zh-CN/time.md)
+- **写作**：从你读的论文里提炼术语和句式，每天练一张卡片；公开写作的进度管理。[详细介绍 →](docs/zh-CN/writing.md)
+- **英语**：用你昨天做过的事出题的每日口语练习。[详细介绍 →](docs/zh-CN/english.md)
+- **阅读**：读书笔记的统计和最近的想法。[详细介绍 →](docs/zh-CN/reading.md)
+- **文件**：三栏浏览、预览和编辑整个 vault。[详细介绍 →](docs/zh-CN/files.md)
 
-不用的页面可以在设置里关闭。
-
-## 截图
-
-所有截图使用插件自带的虚构示例笔记。
-
-### Projects · 项目
-每个项目的下一步、已完成任务和生活日志，以及所有项目合并的时间线。
-
-![Projects](docs/screenshots/02-projects.webp)
-
-### Files · 文件
-浏览文件夹与最近修改的笔记，右侧预览可直接编辑。
-
-![Files](docs/screenshots/03-files.webp)
-
-### Literature · 文献
-研究缺口、对比矩阵、标签合集与综述草稿，全部由你在 Zotero 里的划线生成。详见 [研究生文献管理](#研究生文献管理)。
-
-![Literature · Gaps](docs/screenshots/04a-lit-gaps.webp)
-
-### Reading · 阅读
-书籍数、阅读时长、划线与最近的想法。
-
-![Reading](docs/screenshots/05-reading.webp)
-
-### English · 英语
-根据你前一天做过的事生成今天的口语题，附一周计划、练习记录和积累的表达。
-
-![English](docs/screenshots/06-english.webp)
-
-### Writing · 写作
-来自 Zotero 合集的学术写作练习，以及公开写作的进度。
-
-![Writing](docs/screenshots/07-writing.webp)
-
-### Time · 时间
-作息指标、今日计划与实际对比、本周日历、时间去向，以及最近 14 天的记录。
-
-![Time](docs/screenshots/08-time.webp)
-
-## 需要
-
-- Obsidian 1.4.10 或更高版本（电脑端或手机端）
-- 安装并启用 [Dataview](https://github.com/blacksmithgu/obsidian-dataview) 插件。**不需要**开启「允许 JavaScript 查询」。
+<table>
+  <tr>
+    <td width="50%"><a href="docs/zh-CN/literature.md"><img src="docs/screenshots/04a-lit-gaps.webp" alt="Gap 合集"></a><br><sub>研究缺口（Gap）合集</sub></td>
+    <td width="50%"><a href="docs/zh-CN/literature.md"><img src="docs/screenshots/04b-lit-matrix.webp" alt="文献对比矩阵"></a><br><sub>文献对比矩阵</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/zh-CN/projects.md"><img src="docs/screenshots/02-projects.webp" alt="项目时间线"></a><br><sub>项目时间线</sub></td>
+    <td width="50%"><a href="docs/zh-CN/time.md"><img src="docs/screenshots/08-time.webp" alt="时间与作息"></a><br><sub>时间与作息</sub></td>
+  </tr>
+</table>
 
 ## 安装
 
-### 用 BRAT 安装（推荐，自动更新）
+OneDesk 需要 [Dataview](https://github.com/blacksmithgu/obsidian-dataview) 插件（不需要开启「允许 JavaScript 查询」）。
 
-1. 在第三方插件市场安装并启用 **BRAT**。
-2. 运行命令 **BRAT: Add a beta plugin for testing**。
-3. 填入 `https://github.com/L-WangLi/obsidian-onedesk`。
-4. 在「设置 → 第三方插件」中启用 **OneDesk**。
+**用 BRAT 安装**（自动更新）：在第三方插件市场安装 **BRAT**，运行命令「BRAT: Add a beta plugin for testing」，填入 `https://github.com/L-WangLi/obsidian-onedesk`，然后启用 **OneDesk**。
 
-### 手动安装
+**手动安装**：从 [最新 Release](https://github.com/L-WangLi/obsidian-onedesk/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，放进 `<vault>/.obsidian/plugins/onedesk/`，然后启用 **OneDesk**。
 
-1. 从 [最新 Release](https://github.com/L-WangLi/obsidian-onedesk/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`。
-2. 放到 `<你的 vault>/.obsidian/plugins/onedesk/`。
-3. 重新加载 Obsidian，在「设置 → 第三方插件」中启用 **OneDesk**。
-
-## 快速开始
+## 一分钟试用
 
 1. 新建一个空 vault，装好 Dataview 和 OneDesk。
 2. 在命令面板运行 **OneDesk: 创建示例笔记**。
-3. OneDesk 会显示一周虚构的项目、任务、打卡、读书和文献记录，每个页面都有内容。
+3. 每个页面都会出现一周虚构的任务、项目、打卡、论文和读书记录。
 
-示例里的 `OneDesk 示例说明.md` 说明了哪篇笔记对应哪张卡片。看懂之后删掉示例，换成你自己的笔记即可。
+## 文档
 
-## 笔记约定
-
-OneDesk 没有数据库，每张卡片都是普通笔记的视图。约定如下（文件夹名是默认值，可以修改）：
-
-| 内容 | 位置 | 格式 |
-| --- | --- | --- |
-| 项目 | `Workstreams/<项目>/Overview.md` | frontmatter：`type: project`、`project_id`、`note_label`、`area`、`status` |
-| 任务 | 日记 `Intake/Days/` | `- [ ] 内容 #Academic [when:: 2026-01-15] [project:: thesis]` |
-| 生活日志 | `Intake/Log/2026-01-15 life log.md` | `- 09:30 · 内容`；带上项目概览的链接，就会进入该项目时间线 |
-| 打卡 | `Console/Clock.md` | `## 2026-01-15` 下写 `- 08:30 in research`、`- 11:50 break` |
-| 倒数日 | `Console/Dates.md` | `- 2026-02-01 · 名称` |
-| 等待 / 想做 | `Intake/Pending.md`、`Scratch/Later.md` | `- [ ] 2026-01-15 · 内容` |
-| 作息计划 | `Intake/Days/Rhythm.md` | 表格：`\| 08:30 - 11:30 \| 深度工作 \| … \|` |
-| 读书笔记 | `Shelf/` | `> 📌 划线`、`- 💭 想法`、`- ⏱ 2026-01-15 21:30` |
-| 文献 | `Sources/Reading/Zotero/` | frontmatter `type: paper`（由 Zotero 同步生成） |
-| 模板 | `Blueprints/` | `Daily Note Template`、`Life Log Template` 等 |
-
-如果启用了核心「日记」插件，日记的位置和日期格式以它的设置为准。
-
-## 随手记录与每日节奏
-
-### 为什么要随时记下来
-
-没写下来的念头会反复冒出来：*那封邮件还没回、这个方法对不对、那篇论文要查一下*。每冒出来一次，注意力就被从手头的工作上拉走一次。
-
-OneDesk 的设计参考了几个关于这件事的经典理念：
-
-- **GTD 的「收集」原则**（David Allen《搞定》）：只存在脑子里、还没处理完的事，是一个个「未闭合的环」，会不断索取注意力。把它们放进一个你信任的系统，头脑才能放下。
-- **蔡格尼克效应**：未完成的事比已完成的事更容易浮现在脑中。Masicampo 与 Baumeister（2011）的研究发现，只要为未完成的目标定下一个具体安排，这些侵入性的念头就会减少——事情不必做完，只要被妥善「停放」好。
-- **间隙日志（interstitial journaling）**：每次切换任务时写一行带时间的记录，既留下一天的轨迹，也让重新投入更容易。
-
-所以首页把「放念头的地方」都放在一次点击或一个回车之内，而且每个地方都有明确的下一步：回答它、把它变成任务，或者先放着。
-
-### Today · 今日任务
-
-当天的任务清单，读写的都是日记笔记。
-
-- **添加任务**：先选上下文——个人领域（*Learning* 学习 或 *Reflection* 反思），或者某个项目——输入后回车。任务会写进今天日记对应领域的标题下，形如 `- [ ] 内容 #Learning [when:: 2026-01-15]`；项目任务还会带上 `[project:: id]`。Academic（学术）和 Work（工作）类任务归属于项目。
-- **分组**：*Today* 今天、*Overdue* 逾期、*Done today* 今天完成、*Done yesterday* 昨天完成、*Done · last 7 days* 近 7 天完成。
-- **每条任务可以**：勾选完成（自动记下完成时间）、直接修改文字、在「今天 → 明天 → 以后」之间调整、切换上下文、加备注、关联参考笔记、打开或新建详情笔记、取消或删除。
-- 任务只创建一次。拖延到第二天时，改它的 `[when::]` 日期，而不是复制到第二天的日记里。
-
-### Capture · 随手捕获
-
-一个输入框，接住刚刚闪过的念头。旁边的按钮在两种类型之间切换，回车保存，然后回到工作。
-
-- **❓ 问题（question）**：想弄明白或需要做决定的事。保存到 `Scratch/Questions.md`，记下时间和领域，同时记录在今天日记的「❓ Questions」下。之后可以：
-  - **✍️ 回答**：答案连同时间一起保存，今天的日记里会记下你回答了它；
-  - **→ 转成今天的任务**，问题标记为「已转任务」；
-  - 点圆点切换领域，或删除。未解决的问题会显示已经等了几天。
-- **Someday · 以后想做**：想做、想看、想学，但不是现在。保存到 `Scratch/Later.md`。想法有进展时可以追加带时间的备注，做完勾选，或者**提升**为今天的任务。
-
-### 等待清单与倒数日
-
-- **Waiting for · 等待清单**（`Intake/Pending.md`）：取决于别人的事，比如等回复、等审稿、等交付。跟进时追加带时间的备注；勾选完成会记下解决的时间。
-- **Countdown · 倒数日**（`Console/Dates.md`）：截止日期倒数，重要的起始日正数。
-
-### Quick open · 快速入口
-
-每天都要打开的笔记，一键直达：
-
-| 按钮 | 打开 |
+| | |
 | --- | --- |
-| **Daily Note** | 今天的日记；不存在时按 `Blueprints/Daily Note Template` 创建 |
-| **Daily review** | 今天的复盘，`Intake/Review daily/<日期> 复盘` |
-| **Life Log** | 今天的生活日志（碎碎念）；按 `Blueprints/Life Log Template` 创建 |
-| **Add to life log** | 弹出输入框，写一句就追加到今天的生活日志，格式 `- HH:mm · 内容`，不用离开首页 |
-| **Yesterday** | 昨天的复盘 |
-| **Weekly review** | 本周复盘，`Intake/Review weekly/<年>-W<周>` |
-| **Speech**、**Academic**、**Paper reading**、**Public writing** | 用对应模板新建一篇口语练习、学术写作、论文阅读或公开文章笔记 |
-| **Archive old** | 把本月以前的日记、复盘和生活日志移入 `YYYY-MM` 子文件夹，链接不会断 |
+| [快速开始](docs/zh-CN/getting-started.md) | 安装、示例笔记、文件夹约定、设置、多设备同步 |
+| [首页](docs/zh-CN/dashboard.md) | 为什么随手记录能帮你专注；今日任务、随手捕获、问题、快速入口、日记、碎碎念、复盘 |
+| [文献](docs/zh-CN/literature.md) | 研究生文献管理：Gap 合集、对比矩阵、标签合集、综述草稿、Zotero 同步 |
+| [项目](docs/zh-CN/projects.md) · [文件](docs/zh-CN/files.md) | 项目笔记与时间线；vault 浏览器 |
+| [时间](docs/zh-CN/time.md) · [写作](docs/zh-CN/writing.md) · [英语](docs/zh-CN/english.md) · [阅读](docs/zh-CN/reading.md) | 打卡与作息；写作练习；口语日课；读书笔记 |
 
-还不存在的复盘笔记，点开时会新建一篇空白笔记。
+## 笔记始终属于你
 
-### 日记、生活日志与复盘
-
-- **日记**（`Intake/Days/<日期>`）：当天的计划。任务分在 *Academic*、*Work*、*Learning*、*Reflection* 下；嵌入当天的打卡记录；首页记录的问题和回答；链接到当天的生活日志。示例模板里有完整结构。
-- **生活日志 · 碎碎念**（`Intake/Log/<日期> life log`）：一天的流水记录，一行一条、带时间——刚做完什么、注意到什么、此刻的感受。在行里链接某个项目的概览笔记，这一行就会出现在该项目的时间线上；项目页的 **Log progress** 会自动写入这样的一行。在阅读视图和实时预览中，生活日志会显示成时间线。
-- **每日复盘**：晚上花几分钟——做成了什么、没做成什么、明天最重要的一件事。第二天早上用 **Yesterday** 找回昨晚的复盘来安排计划。
-- **周复盘**：回看一周的任务、时间和生活日志，定下周的重点。
-
-### 用 OneDesk 过一天
-
-1. **早上**：打开 OneDesk，看一眼 *Overdue* 和昨天的复盘，添加今天的任务，打卡点 **Wake** 和要开始的活动。
-2. **工作中**：念头打断你时，丢进 *Capture* 或 *Add to life log*，然后回到任务。切换活动时切换打卡。
-3. **晚上**：回答或转化几个问题，写每日复盘，点 **End**。
-4. **每周**：周复盘；从 *Someday* 里提升一两件事；月初点一次 **Archive old**。
-
-## 研究生文献管理
-
-写学位论文要读几十篇文献，真正要回答的问题都是跨论文的：*别人指出过哪些研究缺口？各篇的方法和数据集怎么比？关于某个主题大家都说了什么？怎么把这些写成 related work？*
-
-OneDesk 用你本来就会在 Zotero 里做的划线来回答这些问题：划线留在 Zotero，汇总和写作放在 Obsidian。
-
-### 使用流程
-
-1. **在 Zotero 里读和划线。**给指出问题的句子打 `gap` 标签，方法打 `method`，数据打 `dataset`，主要结论打 `result`；也可以加任何其他标签（`limitation`、`future work`、`baseline`……）。自己的想法写在批注评论里。
-2. **同步。**在文献页点 **Sync Zotero**：每篇论文生成一篇笔记，下面四个合集也会一起重建。
-3. **每篇写一段话。**在论文笔记的 `## 综述段落` 下，写你在 related work 里会怎么介绍它；在 frontmatter 里填主题，如 `topics: [图神经网络, 小样本学习]`。
-4. **用合集。**Gap 合集用来提炼研究问题、写开题报告；矩阵用来比较方法；标签合集用来查看某个主题下的所有观点；综述草稿就是文献综述的初稿。
-
-### 四个合集
-
-**Gap 合集**：所有标为 gap 的句子，按论文汇总、新论文在前，附译文、你的批注、页码和跳回 PDF 的链接。已读但还没标 gap 的论文列在下方，避免遗漏。`gap`、`research gap`、`问题`、`研究缺口` 都算同一个标签。
-
-![Gaps](docs/screenshots/04a-lit-gaps.webp)
-
-**文献对比矩阵**：每篇论文一行，并排比较想解决的问题、方法、数据集和结果，内容来自每篇笔记的「速览」表。可以按任意关键词筛选，比如数据集名称或年份；你在笔记表格里手填的内容也会显示在这里。
-
-![Matrix](docs/screenshots/04b-lit-matrix.webp)
-
-**标签合集**：整个合集的划线按标签归组，显示每个标签有多少条划线、涉及几篇论文；同义标签自动合并。
-
-![Tags](docs/screenshots/04c-lit-tags.webp)
-
-**综述草稿**：你写过的所有「综述段落」，按 `topics` 分组，组内按论文年份从早到晚排列，每段末尾附（作者, 年份）引用。**Copy all** 会把带主题标题的整份草稿复制到剪贴板；已读但还没写的论文列在下方。
-
-![Synthesis](docs/screenshots/04d-lit-synthesis.webp)
-
-### 合集会生成普通笔记
-
-每次同步，或点文献页的 **更新合集**，四个合集都会写成 `Sources/Reading/` 下的普通笔记：`Gap 合集`、`文献矩阵`、`标签合集`、`综述草稿`。可以搜索、在开题报告里链接、在手机上查看，也会像普通笔记一样同步。
-
-每篇顶部都有 **我的整理** 区域，用来写你自己的归纳。`%% OneDesk … %%` 这一行以上的内容属于你，永远不会被改写；每次只重新生成这一行以下的部分。
-
-![Gap 合集笔记](docs/screenshots/04e-gap-note.webp)
-
-合集只在同步或点按钮时重建，打开页面不会自动改写文件，所以多台设备同步同一个 vault 时不会互相冲突。
-
-### 标签同义词
-
-在「设置 → OneDesk → 标签同义词」里，把多种写法合并成一个标签，每行一组：
-
-```text
-gap: limitation of prior work, 局限
-baseline: baselines, 对比方法
-```
-
-这些会追加到内置的 `gap`、`method`、`dataset`、`result` 同义词里。
-
-### 设置 Zotero 同步（电脑端）
-
-1. 使用 Zotero 6 或 7，数据目录保持默认的 `~/Zotero`。
-2. 确认装有 `sqlite3` 命令行工具：macOS 自带；Linux 用包管理器安装；暂不支持 Windows。
-3. 把论文放进一个合集，在「设置 → OneDesk → Zotero 合集」里填写它的**完整名称**（不含子合集）。
-4. 点 **Sync Zotero**。
-
-OneDesk 读取的是 Zotero 数据库的临时副本，Zotero 可以保持打开；不会往 Zotero 写任何东西。所有视图和合集在手机上都能基于已同步的笔记使用。
-
-### 论文笔记包含什么
-
-每篇论文一篇笔记，放在 `Sources/Reading/Zotero/`，以标题命名。frontmatter 包括 `title`、`authors`、`year`、`venue`、`doi`、`zotero_key`、`status`（`unread`、`read`，划线达到 20 条为 `deep`）、`highlights` 与 `figures` 数量、`last_read`、`sessions`（每个做过批注的日子一行）和 `topics`。
-
-| 部分 | 内容 |
-| --- | --- |
-| 标题行 | 作者 · 年份 · 来源，附「在 Zotero 中打开」和 DOI 链接 |
-| **速览** | 想解决的问题、方法、数据集、结果，取自带对应标签的划线；手填的行会保留，直到有带标签的划线填上它 |
-| **图表** | 你在 PDF 里框选的图表，复制到 `_figures/<zotero key>/`，从 PDF 正文取图注，按方法、实验设置、结果分组 |
-| **我划的句子** | 按论文自身章节（摘要、引言、方法、结果……）归组，每条有标签、页码和跳回 PDF 的链接；便签按位置插在其间 |
-| 素材 | 折叠的列表：gap 与方法句子，以及你写过的所有内容 |
-| **综述段落**、**我的话** | 属于你 |
-
-- 16 个字符以内、且不含逗号、句号、分号的标签视为分类标签；在标签框里输入的更长句子会被当作笔记，和批注评论里的话一起显示为 **我：**。评论里 `🔤` 标记之间的内容显示为浅色译文。
-- **你写的内容永远不会被覆盖**：每次同步，从 `## 综述段落` 到文末原样保留。笔记通过 `zotero_key` 对应论文，Zotero 里改标题不会丢失内容。
-- `Sources/Reading/Thoughts.md` 汇总你在 Zotero 里写的便签、批注评论和子笔记，排除不是你写的笔记（阅读时长数据、arXiv 备注、TL;DR、只重复划线的笔记）。
-- 图表处提示「Zotero 还没渲染这张图」时，在 Zotero 里点开一次该批注再同步。
-
-### 文献页的全部视图
-
-| 视图 | 内容 |
-| --- | --- |
-| **Papers** | 状态（New / Read / Deep）、作者、年份、来源、划线数、最近阅读 |
-| **Gaps** | Gap 合集 |
-| **Matrix** | 文献对比矩阵，可筛选 |
-| **Tags** | 标签合集 |
-| **Synthesis** | 按主题分组的综述草稿，可一键复制 |
-| **Timeline** | 每天读了哪篇、划了多少 |
-| **Notes** | `Thoughts.md` 的内容 |
-
-其他页面也用这些笔记：长难句那天，**English** 用你划过、带译文的英文句子出题；**Writing** 从「写作素材合集」指定合集的论文全文里提取学术句式。
-
-## 设置
-
-- **称呼、启动时打开**
-- **模块**：隐藏不用的页面
-- **文件夹**：修改任意默认位置。改上级文件夹（如「收件箱」）时，由它推导出的位置会一起变。
-- **项目看板（高级）**：默认显示所有未归档、未完成的项目。需要固定顺序、颜色或别名时填写 JSON，示例见英文 README。
-
-### 多设备同步设置
-
-很多同步工具不会同步插件自己的 `data.json`。在设置里点 **创建配置文件**，设置会保存为 vault 里的 `onedesk.json`，像普通笔记一样同步；在一台设备上修改，其他设备会自动读取。
-
-## 仅电脑端可用的部分
-
-- 文献页的 **Zotero 同步** 通过 `sqlite3` 命令行工具读取 Zotero 数据库，会在 `/usr/bin`、`/opt/homebrew/bin`、`/usr/local/bin` 中查找（macOS、Linux）。同步生成的笔记和文献页的所有视图在任何设备上都能使用。
-- 写作页的 **Research writing** 从设置中「写作素材合集」指定的 Zotero 合集提取术语与句式。填写之前不会读取 Zotero；素材建立后手机端也能使用。
-- 文献页的所有视图和合集笔记在所有设备上都能使用。
-- 其他功能在手机端都可以使用。
+OneDesk 没有数据库。每张卡片都是普通 Markdown 笔记的视图，它写下的内容和 vault 里其他笔记一样，可以阅读、修改、搜索和同步。电脑端和手机端都能用，只有 Zotero 同步这一步需要电脑端。
 
 ## 开发
 
@@ -302,7 +67,7 @@ npm run example                                             # 生成装好插件
 npm test
 ```
 
-发布：修改 `manifest.json` 与 `versions.json` 中的版本号，推送同名 tag，GitHub Actions 会自动构建、测试，并把 `main.js`、`manifest.json`、`styles.css` 附到 Release。
+源码在 `src/`。发布时修改 `manifest.json` 与 `versions.json` 中的版本号，推送同名 tag，GitHub Actions 会自动构建、测试并发布。
 
 ## 许可证
 

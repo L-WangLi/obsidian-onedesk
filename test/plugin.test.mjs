@@ -231,3 +231,12 @@ test("files the dashboard creates on demand survive two renders racing", () => {
     assert.match(body, /return ensureVaultFile\(/, fn);
   }
 });
+
+test("schedule blocks are classified from English labels too", () => {
+  const line = dashboardSource.split("\n").find(l => l.includes("kind: /高强度"));
+  const [, focusSrc, restSrc] = line.match(/kind: \/(.+?)\/i\.test\(label\) \? 'focus' : \/(.+?)\/i\.test/);
+  const focus = new RegExp(focusSrc, "i"), rest = new RegExp(restSrc, "i");
+  for (const label of ["深潜：高强度科研", "Deep work", "Focus block", "Writing"]) assert.ok(focus.test(label), label);
+  for (const label of ["午休", "Lunch", "Nap", "Exercise", "Rest"]) assert.ok(rest.test(label), label);
+  assert.ok(!rest.test("Interest reading"));
+});

@@ -4801,7 +4801,7 @@ async function healthPlan() {
         const label = m[3].replace(/\*/g, '').trim();
         out.push({
           from: m[1].padStart(5, '0'), to: m[2].padStart(5, '0'), label,
-          kind: /高强度|深潜|写作/.test(label) ? 'focus' : /午休|睡|放松|运动|午餐/.test(label) ? 'rest' : 'other',
+          kind: /高强度|深潜|写作|deep work|focus|writing/i.test(label) ? 'focus' : /午休|睡|放松|运动|午餐|lunch|nap|sleep|relax|\brest\b|exercise|workout/i.test(label) ? 'rest' : 'other',
         });
       }
     }
@@ -4855,13 +4855,13 @@ async function renderHealth() {
 
   const axis = HZ_TICKS.map(h =>
     `<span class="hz-tick" style="left:${((h * 60 - HZ_LO) / (HZ_HI - HZ_LO)) * 100}%">${h}</span>`).join('');
-  // The schedule note is written in Chinese prose; the chart wants a word.
+  // Schedule labels are prose, in Chinese or English; the chart wants a word.
   const PLAN_WORDS = [
-    [/起床|淋浴/, 'Wake'], [/散步|户外/, 'Walk'], [/早餐/, 'Breakfast'],
-    [/高强度科研|深潜/, 'Deep work'], [/高强度工作|写作/, 'Deep work 2'],
-    [/杂务/, 'Admin'], [/午餐/, 'Lunch'], [/午休|闭目/, 'Nap'],
-    [/波谷|琐碎/, 'Shallow'], [/运动|有氧/, 'Exercise'],
-    [/放松与交流|交流/, 'Social'], [/娱乐|咖啡馆|练字/, 'Leisure'], [/入睡|睡眠/, 'Sleep'],
+    [/起床|淋浴|wake|shower/i, 'Wake'], [/散步|户外|walk/i, 'Walk'], [/早餐|breakfast/i, 'Breakfast'],
+    [/高强度科研|深潜|deep work|focus/i, 'Deep work'], [/高强度工作|写作|writing/i, 'Deep work 2'],
+    [/杂务|admin|email/i, 'Admin'], [/午餐|lunch/i, 'Lunch'], [/午休|闭目|nap/i, 'Nap'],
+    [/波谷|琐碎|shallow|errands/i, 'Shallow'], [/运动|有氧|exercise|workout/i, 'Exercise'],
+    [/放松与交流|交流|social|friends/i, 'Social'], [/娱乐|咖啡馆|练字|leisure|reading/i, 'Leisure'], [/入睡|睡眠|sleep|bed/i, 'Sleep'],
   ];
   const planShort = label => {
     for (const [re, word] of PLAN_WORDS) if (re.test(label)) return word;
