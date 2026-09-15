@@ -293,28 +293,31 @@ function extractFunctions(names) {
 const punch = vm.runInNewContext(
   "const PUNCH_CARRY_MAX = 8 * 60; const pad = n => String(n).padStart(2, '0');" +
   "function dateKey(date = new Date()) { const d = new Date(date); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }" +
-  extractFunctions(["hMins", "punchSpans", "dayBefore", "punchCarry", "punchCarriedRunning", "punchDaySpans"]) +
-  "; ({ punchCarry, punchCarriedRunning, punchDaySpans });");
+  extractFunctions(["hMins", "punchSpans", "hPastMidnight", "hShow", "dayBefore", "punchCarry", "punchCarriedRunning", "punchDaySpans", "punchTotals"]) +
+  "; ({ punchCarry, punchCarriedRunning, punchDaySpans, punchTotals, hShow });");
 const P = s => s.trim().split("\n").map(l => { const [at, key, cat] = l.trim().split(/\s+/); return { at, key, cat: cat || "" }; });
 const minutes = spans => spans.reduce((a, [s, e]) => a + (+e.slice(0, 2) * 60 + +e.slice(3)) - (+s.slice(0, 2) * 60 + +s.slice(3)), 0);
 
-test("a session past midnight, stopped by pressing the same activity, is counted on both days", () => {
+test("a session past midnight belongs wholly to the day it started, even when stopped by pressing it again", () => {
   // the log that showed the bug: Research from 22:10, then Research + End at 00:53
   const days = [
     { date: "2026-09-16", list: P("00:53 in research\n00:53 out") },
     { date: "2026-09-15", list: P("06:33 wake\n06:34 in research\n09:14 break\n11:44 in research\n11:57 break\n11:57 in work\n17:05 break\n18:04 in work\n19:08 break\n22:10 in research") },
   ];
   const d15 = punch.punchDaySpans(days, 1), d16 = punch.punchDaySpans(days, 0);
-  assert.deepEqual(plain(d15.spans.at(-1)), ["22:10", "24:00", "research"]);
-  assert.deepEqual(plain(d16.spans), [["00:00", "00:53", "research"]]);
-  assert.equal(minutes(d15.spans) + minutes(d16.spans), 160 + 13 + 308 + 64 + 110 + 53);
+  assert.deepEqual(plain(d15.spans.at(-1)), ["22:10", "24:53", "research"]);
+  assert.deepEqual(plain(d16.spans), []);
+  assert.equal(minutes(d15.spans), 160 + 13 + 308 + 64 + 163);   // 22:10 → 00:53 is 2h43 on the 15th
+  assert.equal(minutes(d16.spans), 0);
+  assert.equal(punch.hShow("24:53"), "00:53⁺¹");
+  assert.equal(punch.hShow("22:10"), "22:10");
 });
 
 test("an explicit End or Break after midnight still closes last night's session", () => {
   for (const close of ["01:10 out", "01:10 break"]) {
     const days = [{ date: "2026-09-16", list: P(close) }, { date: "2026-09-15", list: P("23:00 in work") }];
-    assert.deepEqual(plain(punch.punchDaySpans(days, 1).spans), [["23:00", "24:00", "work"]]);
-    assert.deepEqual(plain(punch.punchDaySpans(days, 0).spans), [["00:00", "01:10", "work"]]);
+    assert.deepEqual(plain(punch.punchDaySpans(days, 1).spans), [["23:00", "25:10", "work"]]);
+    assert.deepEqual(plain(punch.punchDaySpans(days, 0).spans), []);
   }
 });
 
@@ -342,4 +345,18 @@ test("pressing buttons after midnight writes a closing line for last night's ses
   assert.match(body, /const carried = punchCarriedRunning\(await punchLoad\(dayBefore\(date\)\), list, hMins\(at\)\);/);
   assert.match(body, /if \(runningCat && runningCat === cat\) \{\s*entry = \{ at, key: 'break', cat: '' \};/);
   assert.match(body, /if \(carried\) list\.push\(\{ at, key: 'break', cat: '' \}\);/);
+});
+
+test("later sessions the next day still count on the next day", () => {
+  const days = [{ date: "2026-09-16", list: P("01:10 out\n09:00 in research\n10:30 break") }, { date: "2026-09-15", list: P("23:00 in work") }];
+  assert.deepEqual(plain(punch.punchDaySpans(days, 1).spans), [["23:00", "25:10", "work"]]);
+  assert.deepEqual(plain(punch.punchDaySpans(days, 0).spans), [["09:00", "10:30", "research"]]);
+});
+
+test("today's dashboard total leaves last night's session to yesterday", () => {
+  assert.equal(punch.punchTotals(P("00:53 in research\n00:53 out"), "research").total, 0);
+  assert.equal(punch.punchTotals([], "research").total, 0);                    // still running after midnight
+  const later = punch.punchTotals(P("01:10 out\n09:00 in research\n10:30 break"), "work");
+  assert.equal(later.total, 90);
+  assert.equal(plain(later.byCat).work, undefined);
 });

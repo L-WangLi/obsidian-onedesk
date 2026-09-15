@@ -4745,6 +4745,18 @@ function punchSpans(list, carryCat) {
 // dangling overnight, followed by the morning's Wake) is a forgotten End, not an
 // all-night shift, so it stays uncounted rather than billed to midnight.
 const PUNCH_CARRY_MAX = 8 * 60;
+// A clock time past midnight on the day a session started: 00:53 the next morning is 24:53.
+function hPastMidnight(t) {
+  const m = hMins(t) + 24 * 60;
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+// For display: 24:53 reads as 00:53⁺¹.
+function hShow(t) {
+  const m = hMins(t);
+  if (m < 24 * 60) return t;
+  return String(Math.floor(m / 60) - 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') + '⁺¹';
+}
+
 function dayBefore(ds) {
   const d = new Date(String(ds) + 'T12:00:00');
   d.setDate(d.getDate() - 1);
@@ -4776,26 +4788,37 @@ function punchCarriedRunning(prevList, list, nowMins) {
   return 24 * 60 - hMins(open) + nowMins <= PUNCH_CARRY_MAX ? cat : '';
 }
 
-// Spans for one day of a newest-first day list, both midnight edges resolved.
+// Spans for one day of a newest-first day list. A session that runs past midnight belongs
+// wholly to the day it started: it ends there at e.g. 24:53, and the next day starts after it.
 function punchDaySpans(days, i) {
   const cur = days[i]; if (!cur) return { spans: [], open: null, cat: '' };
   const prev = days[i + 1], next = days[i - 1];
   const carry = (prev && prev.date === dayBefore(cur.date)) ? punchCarry(prev.list, cur.list) : '';
   const r = punchSpans(cur.list, carry);
-  if (r.open != null && next && cur.date === dayBefore(next.date) && punchCarry(cur.list, next.list)) {
-    r.spans.push([r.open, '24:00', r.cat]);
-    r.open = null; r.cat = '';
+  if (carry) {
+    if (r.spans.length && r.spans[0][0] === '00:00') r.spans.shift();
+    else if (r.open === '00:00') { r.open = null; r.cat = ''; }
+  }
+  if (r.open != null && next && cur.date === dayBefore(next.date)) {
+    const nextCarry = punchCarry(cur.list, next.list);
+    const closed = nextCarry ? punchSpans(next.list, nextCarry).spans[0] : null;
+    if (closed && closed[0] === '00:00') {
+      r.spans.push([r.open, hPastMidnight(closed[1]), r.cat]);
+      r.open = null; r.cat = '';
+    }
   }
   return r;
 }
 
+// Today's totals. With carryCat, the part of last night's session after midnight is left
+// out — it is credited to yesterday — though it still shows as running.
 function punchTotals(list, carryCat) {
   const { spans, open, cat } = punchSpans(list, carryCat);
   const now = new Date().getHours() * 60 + new Date().getMinutes();
   const byCat = {}; let total = 0;
   const add = (c, m) => { if (m <= 0) return; byCat[c || 'other'] = (byCat[c || 'other'] || 0) + m; total += m; };
-  for (const [s, e, c] of spans) add(c, hMins(e) - hMins(s));
-  if (open != null) add(cat, now - hMins(open));
+  spans.forEach(([s, e, c], i) => { if (!(carryCat && i === 0 && s === '00:00')) add(c, hMins(e) - hMins(s)); });
+  if (open != null && !(carryCat && open === '00:00')) add(cat, now - hMins(open));
   return { byCat, total };
 }
 
@@ -4940,8 +4963,8 @@ async function renderHealth() {
     const cat = PUNCH_CAT(c) || { label: 'Untagged', bg: 'var(--bg4)', fg: 'var(--text3)' };
     const w = hzPct(e) - hzPct(s);
     const live = tLive && tLive[0] === s && tLive[1] === e;
-    return `<span class="hz-blk${live ? ' hz-live' : ''}" style="left:${hzPct(s)}%;width:${w}%;background:${cat.bg};color:${cat.fg}" title="${esc(cat.label + ' ' + s + '–' + e + (live ? ' · running' : ''))}">` +
-      (w > 8 ? `<b>${esc(cat.label)}</b><i>${s}–${e}</i>` : '') + `</span>`;
+    return `<span class="hz-blk${live ? ' hz-live' : ''}" style="left:${hzPct(s)}%;width:${w}%;background:${cat.bg};color:${cat.fg}" title="${esc(cat.label + ' ' + s + '–' + hShow(e) + (live ? ' · running' : ''))}">` +
+      (w > 8 ? `<b>${esc(cat.label)}</b><i>${s}–${hShow(e)}</i>` : '') + `</span>`;
   }).join('');
   const tCats = catMins(tSpans);
   const tTotal = Object.values(tCats).reduce((a, b) => a + b, 0);
@@ -4983,7 +5006,8 @@ async function renderHealth() {
   const wkRange = wkDays[0].date.slice(5).replace('-', '/') + ' – ' + wkDays[6].date.slice(5).replace('-', '/');
   const WK_H = 26;   // px per hour
   const wkHours = []; for (let h = HZ_LO / 60; h < HZ_HI / 60; h++) wkHours.push(h);
-  const wkTop = t => ((hMins(t) - HZ_LO) / 60) * WK_H;
+  // the grid ends at 24:00; a session past midnight is drawn to there and labelled with its real end
+  const wkTop = t => ((Math.min(hMins(t), HZ_HI) - HZ_LO) / 60) * WK_H;
   const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const weekCard = `<div class="card rp-card">
     <div class="card-title">This week
@@ -4999,9 +5023,9 @@ async function renderHealth() {
           const cat = PUNCH_CAT(c2) || { label: 'Untagged', bg: 'var(--bg4)', fg: 'var(--text3)' };
           const top = wkTop(s2), hgt = Math.max(14, wkTop(e2) - top);
           return `<div class="hz-cale" style="top:${top}px;height:${hgt}px;background:${cat.bg};color:${cat.fg}"` +
-            ` title="${esc(cat.label + ' ' + s2 + '–' + e2)}">` +
+            ` title="${esc(cat.label + ' ' + s2 + '–' + hShow(e2))}">` +
             `<b>${esc(cat.label)}</b>` +
-            (hgt > 34 ? `<i>${s2}–${e2}</i>` : '') +
+            (hgt > 34 ? `<i>${s2}–${hShow(e2)}</i>` : '') +
             (hgt > 52 ? `<u>${hFmt(hMins(e2) - hMins(s2))}</u>` : '') + `</div>`;
         }).join('');
         const isToday = d.date === todayStr();
@@ -5028,12 +5052,12 @@ async function renderHealth() {
     const gross = d.spans.length ? hMins(last) - hMins(first) : 0;
     const brk = gross > d.worked ? gross - d.worked : 0;
     const bars = d.spans.map(([s2, e2, c2]) =>
-      `<span class="hz-sb" style="left:${hzPct(s2)}%;width:${hzPct(e2) - hzPct(s2)}%;background:${(PUNCH_CAT(c2) || {}).color || 'var(--m-grey)'}" title="${esc((PUNCH_CAT(c2) || {}).label || '')} ${s2}–${e2}"></span>`).join('');
+      `<span class="hz-sb" style="left:${hzPct(s2)}%;width:${hzPct(e2) - hzPct(s2)}%;background:${(PUNCH_CAT(c2) || {}).color || 'var(--m-grey)'}" title="${esc((PUNCH_CAT(c2) || {}).label || '')} ${s2}–${hShow(e2)}"></span>`).join('');
     return `<div class="hz-lrow${d.spans.length ? '' : ' hz-lempty'}" data-action="punch-edit" data-date="${esc(d.date)}" title="${esc(d.date)} · 打开记录改这一天">
       <span class="hz-ld">${d.date.slice(5).replace('-', '/')}</span>
       <span class="hz-strack">${bars}</span>
       <span class="hz-lw">${d.wake || '—'}</span>
-      <span class="hz-lr">${first || '—'}${last ? '→' + last : ''}</span>
+      <span class="hz-lr">${first || '—'}${last ? '→' + hShow(last) : ''}</span>
       <span class="hz-lt">${d.worked ? hFmt(d.worked) : '—'}</span>
       <span class="hz-lb">${brk ? hFmt(brk) : '—'}</span>
     </div>`;
