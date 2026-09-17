@@ -18,7 +18,7 @@ So the dashboard keeps the places to put a thought one click or one Enter away, 
 
 Your task list for the day, read from and written to your daily notes.
 
-- **Add a task**: pick a context — a personal area (*Learning* or *Reflection*) or one of your projects — type, and press Enter. It is written into today's daily note under that area's heading as `- [ ] text #Learning [when:: 2026-01-15]`, with `[project:: id]` for a project task. Academic and Work tasks belong to a project.
+- **Add a task**: pick a context — a personal area (*Learning* or *Reflection*) or one of your projects — type, and press Enter. It is written into today's daily note under that area's heading as `- [ ] text #Learning [when:: 2026-01-15]`, with `[project:: id]` for a project task. Academic and Work tasks belong to a project. The **今天 / 明天** button on the right of the input plans the task for tomorrow instead (`[when::]` is tomorrow's date), so what you write the night before is not overdue the next day.
 - **Sections**: *Today*, *Overdue*, *Backlog*, *Done today*, *Done yesterday* and *Won't do*.
 - **On each task**: tick it off (adds the completion time), edit the text in place, move it between *today → tomorrow → later*, switch its context, add a note, attach reference notes, open or create a detail note, cancel or delete it.
 - A task is created once. When it slips, change its `[when::]` date instead of copying it into the next day's note.
