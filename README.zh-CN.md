@@ -54,7 +54,7 @@ OneDesk 需要 [Dataview](https://github.com/blacksmithgu/obsidian-dataview) 插
 
 ## 笔记始终属于你
 
-OneDesk 没有数据库。每张卡片都是普通 Markdown 笔记的视图，它写下的内容和 vault 里其他笔记一样，可以阅读、修改、搜索和同步。电脑端和手机端都能用，只有 Zotero 同步这一步需要电脑端。
+OneDesk 没有数据库。每张卡片都是普通 Markdown 笔记的视图，它写下的内容和 vault 里其他笔记一样，可以阅读、修改、搜索和同步。电脑端和手机端都能用，手机上是单栏排版；只有 Zotero 同步这一步需要电脑端。
 
 ## 开发
 

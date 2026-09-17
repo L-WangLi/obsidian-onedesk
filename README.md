@@ -56,7 +56,7 @@ OneDesk needs the [Dataview](https://github.com/blacksmithgu/obsidian-dataview) 
 
 ## Your notes stay yours
 
-OneDesk has no database. Every card is a view over ordinary Markdown notes, so what it writes can be read, edited, searched and synced like anything else in your vault. It works on desktop and mobile; only the Zotero sync itself needs the desktop app.
+OneDesk has no database. Every card is a view over ordinary Markdown notes, so what it writes can be read, edited, searched and synced like anything else in your vault. It works on desktop and mobile, with a single-column layout on phones; only the Zotero sync itself needs the desktop app.
 
 ## Development
 
