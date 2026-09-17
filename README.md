@@ -15,7 +15,7 @@ An all-in-one dashboard for Obsidian, built around a graduate student's day: tas
 - **Projects** — next actions and a progress timeline for each project, and one timeline across all of them. [Read more →](docs/en/projects.md)
 - **Time** — a one-tap punch clock, your schedule against what actually happened, and rhythm metrics like golden hours used. [Read more →](docs/en/time.md)
 - **Writing** — daily practice with terms and sentence moves drawn from the papers you read, and a pipeline for public writing. [Read more →](docs/en/writing.md)
-- **English** — a daily speaking drill built from what you did yesterday. [Read more →](docs/en/english.md)
+- **English** — sentence patterns practised as chunks on a four-week plan, and a daily speaking drill built from what you did yesterday. [Read more →](docs/en/english.md)
 - **Reading** — stats and your latest thoughts from book notes. [Read more →](docs/en/reading.md)
 - **Files** — browse, preview and edit the vault in three panes. [Read more →](docs/en/files.md)
 
@@ -52,7 +52,7 @@ OneDesk needs the [Dataview](https://github.com/blacksmithgu/obsidian-dataview) 
 | [Dashboard](docs/en/dashboard.md) | Why capture helps you focus; Today, Capture, questions, quick open, daily note, life log, reviews |
 | [Literature](docs/en/literature.md) | The graduate-student workflow: gaps, matrix, tags, related-work draft, Zotero sync |
 | [Projects](docs/en/projects.md) · [Files](docs/en/files.md) | Project notes and timelines; the vault browser |
-| [Time](docs/en/time.md) · [Writing](docs/en/writing.md) · [English](docs/en/english.md) · [Reading](docs/en/reading.md) | Punch clock and schedule; writing practice; speaking drill; book notes |
+| [Time](docs/en/time.md) · [Writing](docs/en/writing.md) · [English](docs/en/english.md) · [Reading](docs/en/reading.md) | Punch clock and schedule; writing practice; patterns and speaking drill; book notes |
 
 ## Your notes stay yours
 

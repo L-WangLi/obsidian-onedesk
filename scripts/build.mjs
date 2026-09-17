@@ -28,6 +28,8 @@ export function bundle() {
     read("src/lifelog-timeline.js"),
     "// ── src/literature-core.js ──",
     read("src/literature-core.js"),
+    "// ── src/english-patterns.js ──",
+    read("src/english-patterns.js"),
     "// ── src/sample-vault.js ──",
     read("src/sample-vault.js"),
     "// ── src/dashboard.js ──",

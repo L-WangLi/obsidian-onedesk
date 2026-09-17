@@ -3457,6 +3457,171 @@ async function enSentences(limit) {
 
 let _enSrcDate = '';
 
+// ── sentence patterns (data and plan in english-patterns.js) ──
+let _enPatView = null;      // a pattern picked with ‹ › instead of today's
+let _enPatRefs = false;     // show every reference sentence at once
+
+// Today's sentences for one pattern (or the review), as zh → en.
+function enPatternSaved(lines, tag, title) {
+  const out = new Map();
+  const hi = lines.findIndex(l => { const h = enParsePatternHead(l); return h && h.tag === tag && h.title === title; });
+  if (hi < 0) return { head: null, saved: out };
+  for (let i = hi + 1; i < lines.length && /^\s+-/.test(lines[i]); i++) {
+    const s = enParsePatternSentence(lines[i]);
+    if (s) out.set(s.zh, s.en);
+  }
+  return { head: enParsePatternHead(lines[hi]), saved: out };
+}
+
+// Writes (or with an empty `en`, removes) one sentence and keeps the head line's count current.
+async function enPatternWrite(tag, title, zh, en, finish) {
+  const date = todayStr();
+  const lines = await enLoad(date);
+  let hi = lines.findIndex(l => { const h = enParsePatternHead(l); return h && h.tag === tag && h.title === title; });
+  if (hi < 0) {
+    if (!en && !finish) return 0;
+    lines.push(enPatternHead(enDayNo(await enAllDays()), tag, title, 0, false));
+    hi = lines.length - 1;
+  }
+  let end = hi + 1;
+  while (end < lines.length && /^\s+-/.test(lines[end])) end++;
+  if (zh) {
+    const at = lines.slice(hi + 1, end).findIndex(l => { const x = enParsePatternSentence(l); return x && x.zh === zh; });
+    if (at >= 0) {
+      if (en) lines[hi + 1 + at] = enPatternSentence(zh, en);
+      else { lines.splice(hi + 1 + at, 1); end--; }
+    } else if (en) { lines.splice(end, 0, enPatternSentence(zh, en)); end++; }
+  }
+  const count = lines.slice(hi + 1, end).filter(l => enParsePatternSentence(l)).length;
+  const old = enParsePatternHead(lines[hi]);
+  const dayNo = +(lines[hi].match(/^- Day (\d+)/) || [, 1])[1];
+  lines[hi] = enPatternHead(dayNo, tag, title, Math.min(10, count), finish || old.done);
+  await enSave(date, lines);
+  return count;
+}
+
+function enPatternCardHtml(days, todayLines) {
+  const today = todayStr();
+  const plan = enPatternPlan(days, today);
+  const browsing = _enPatView !== null;
+  const idx = browsing ? _enPatView : plan.idx;
+  const doneOn = enPatternProgress(days);
+  const total = EN_PATTERNS.length;
+  const nav = `<span class="ep-nav">
+      ${browsing ? '<span class="nx-skip" data-action="ep-nav" data-d="0">回到今天</span>' : ''}
+      <span class="ep-arrow" data-action="ep-nav" data-d="-1" title="上一个">‹</span>
+      <span class="ep-arrow" data-action="ep-nav" data-d="1" title="下一个">›</span></span>`;
+
+  if (!browsing && plan.mode === 'rest') {
+    const p = EN_PATTERNS[idx];
+    return `<div class="card rp-card">
+      <div class="card-title">句型 · Patterns <span class="card-sub">周日休息　·　已完成 ${doneOn.size}/${total}</span>${nav}</div>
+      <div class="rp-empty">今天不排新句型。想练的话，下一个是 <b>${esc(p.title)}</b>。</div>
+      <div class="eb-act"><button type="button" class="act-btn" data-action="ep-nav" data-d="0" data-go="${idx}">还是练一个</button></div>
+    </div>`;
+  }
+
+  const review = !browsing && plan.mode === 'review';
+  const tag = review ? EN_REVIEW_TAG : EN_PATTERN_TAG;
+  const title = review ? '本周' : EN_PATTERNS[idx].title;
+  const items = review ? plan.review : EN_PATTERNS[idx].ex.map((_, k) => [idx, k]);
+  const { head, saved } = enPatternSaved(todayLines, tag, title);
+  const finished = head && head.done;
+
+  let top;
+  if (review) {
+    top = `<div class="ep-head"><div class="ep-title">本周复习</div>
+      <div class="ep-zh">只看中文，不看句型，先说出来再写。混在一起的是这周学过的 ${new Set(items.map(x => x[0])).size} 个句型。</div></div>`;
+  } else {
+    const p = EN_PATTERNS[idx], w = EN_PATTERN_WEEKS[enPatternWeek(idx)];
+    top = `<div class="ep-head">
+        <div class="ep-meta">Week ${enPatternWeek(idx) + 1} · ${esc(w.theme)} · ${esc(w.src)}${plan.round > 1 && !browsing ? ' · 第二轮' : ''}</div>
+        <div class="ep-title">${esc(p.title)}</div>
+        <div class="ep-zh">${esc(p.zh)}</div>
+        <div class="ep-note">${esc(p.note)}</div>
+      </div>
+      <div class="ep-vars">${p.vars.map(([name, frame], i) =>
+        `<div class="ep-var"><b>${'①②③④'[i]} ${esc(name)}</b><code>${esc(frame)}</code></div>`).join('')}</div>`;
+  }
+
+  const rows = items.map(([pi, k], n) => {
+    const p = EN_PATTERNS[pi], [vi, zh, en] = p.ex[k];
+    const mine = saved.get(zh) || '';
+    const label = review ? p.title : '①②③④'[vi] + ' ' + p.vars[vi][0];
+    return `<div class="ep-row${mine ? ' ep-has' : ''}">
+      <div class="ep-q"><span class="ep-n">${n + 1}</span><span class="ep-zhq">${esc(zh)}</span><span class="ep-v">${esc(label)}</span></div>
+      <input class="ep-in" data-zh="${esc(zh)}" value="${esc(mine)}" placeholder="${esc(review ? '先说出来，再写下来…' : p.vars[vi][1])}" autocomplete="off" autocapitalize="sentences" spellcheck="true">
+      <div class="ep-ref${_enPatRefs ? ' on' : ''}"><span class="nx-skip" data-action="ep-ref">参考</span><span class="ep-en">${esc(en)}</span></div>
+    </div>`;
+  }).join('');
+
+  const pos = review ? '周六复习' : `${idx + 1}/${total} · 已完成 ${doneOn.size}`;
+  return `<div class="card rp-card ep-card" data-tag="${esc(tag)}" data-title="${esc(title)}">
+    <div class="card-title">句型 · Patterns <span class="card-sub">${pos}</span>${nav}</div>
+    ${top}
+    <div class="ep-rows">${rows}</div>
+    <div class="eb-act">
+      <button type="button" class="act-btn primary nx-go" data-action="ep-done">${finished ? '✓ 已完成' : '练完了'}</button>
+      <span class="ep-count">已写 <b>${saved.size}</b>/10</span>
+      <span class="nx-skip" data-action="ep-refs">${_enPatRefs ? '收起参考' : '显示全部参考'}</span>
+    </div>
+    <div class="nx-steps"><span>① 看中文，先开口说一遍</span><span>② 写下来，回车保存</span><span>③ 点「参考」对照，意思到了就行，不必一样</span></div>
+  </div>`;
+}
+
+function enPatternBind(host) {
+  const card = host.querySelector('.ep-card'); if (!card) return;
+  const { tag, title } = card.dataset;
+  const inputs = [...card.querySelectorAll('.ep-in')];
+  const save = async inp => {
+    const v = inp.value.trim();
+    if (v === (inp.dataset.saved ?? inp.defaultValue.trim())) return;
+    inp.dataset.saved = v;
+    try {
+      const n = await enPatternWrite(tag, title, inp.dataset.zh, v, false);
+      inp.closest('.ep-row').classList.toggle('ep-has', !!v);
+      const c = card.querySelector('.ep-count b'); if (c) c.textContent = String(Math.min(10, n));
+    } catch (e) { new Notice('保存失败：' + (e && e.message ? e.message : e)); }
+  };
+  inputs.forEach((inp, i) => {
+    inp.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      e.preventDefault();
+      save(inp);
+      inp.closest('.ep-row').querySelector('.ep-ref').classList.add('on');
+      if (inputs[i + 1]) inputs[i + 1].focus();
+    });
+    inp.addEventListener('change', () => save(inp));
+  });
+}
+
+async function enPatternAction(a, t) {
+  if (a === 'ep-ref') { t.closest('.ep-ref').classList.toggle('on'); return; }
+  if (a === 'ep-refs') { _enPatRefs = !_enPatRefs; loadEnglish(); return; }
+  if (a === 'ep-nav') {
+    const d = +t.dataset.d, n = EN_PATTERNS.length;
+    if (t.dataset.go != null) _enPatView = +t.dataset.go;
+    else if (d === 0) _enPatView = null;
+    else {
+      const cur = _enPatView !== null ? _enPatView : enPatternPlan(await enAllDays(), todayStr()).idx;
+      _enPatView = (cur + d + n) % n;
+    }
+    loadEnglish(); return;
+  }
+  if (a === 'ep-done') {
+    const card = t.closest('.ep-card'); if (!card) return;
+    // Anything typed but not yet saved goes in first.
+    for (const inp of card.querySelectorAll('.ep-in')) {
+      const v = inp.value.trim();
+      if (v && v !== (inp.dataset.saved ?? inp.defaultValue.trim())) { inp.dataset.saved = v; await enPatternWrite(card.dataset.tag, card.dataset.title, inp.dataset.zh, v, false); }
+    }
+    await enPatternWrite(card.dataset.tag, card.dataset.title, '', '', true);
+    new Notice('已记录：' + card.dataset.title);
+    _enPatView = null;
+    loadEnglish();
+  }
+}
+
 async function loadEnglish() {
   const host = $('english-body'); if (!host) return;
 
@@ -3526,9 +3691,9 @@ async function loadEnglish() {
     if (m) keepers.push({ zh: m[1], en: m[2], date: d.date });
   }
 
-  host.innerHTML = `
+  host.innerHTML = enPatternCardHtml(days, todayLines) + `
     <div class="card rp-card">
-      <div class="card-title">Today
+      <div class="card-title">口语 · Speaking
         <span class="card-sub">Day ${dayNo} / ${EN_PLAN_DAYS}　·　${esc(slot.hint || '')}</span></div>
       ${card}
       ${acts}
@@ -3548,7 +3713,7 @@ async function loadEnglish() {
           const mm = head.match(/· (\d+)min\s*$/);
           return `<div class="eb-lrow" data-action="open-vault" data-path="${esc(EN_FILE_())}">
             <span class="eb-ld">${d.date.slice(5).replace('-', '/')}</span>
-            <span class="eb-lk">${esc((head.match(/· (Part \d|长难句|随手记) ·/) || [, '—'])[1])}</span>
+            <span class="eb-lk">${esc((head.match(/· (Part \d|长难句|随手记|句型复习|句型) ·/) || [, '—'])[1])}</span>
             <span class="eb-lw">${esc(head.replace(/^- Day \d+ · [^·]+· /, '').replace(/ · \d+min$/, ''))}</span>
             <span class="eb-lm">${mm ? mm[1] + 'm' : ''}</span>
             <span class="eb-lp">${keeps ? '+' + keeps : ''}</span></div>`;
@@ -3562,6 +3727,7 @@ async function loadEnglish() {
           : '<div class="rp-empty">练完点「＋ 记一句表达」，一天一两条就够。</div>'}
       </div>
     </div>`;
+  enPatternBind(host);
 }
 
 // ── Writing · research vocabulary and moves ─────────────────────
@@ -5631,6 +5797,7 @@ _root.addEventListener('click', e => {
     else if (a.startsWith('wt-'))  wtAction(a, t);
     else if (a==='en-do')          enPractise(t.dataset.slot, t.dataset.down === '1');
     else if (a==='en-keep')        enKeep();
+    else if (a.startsWith('ep-'))  enPatternAction(a, t);
     else if (a==='punch')          doPunch(t.dataset.key, t.dataset.cat);
     else if (a==='punch-undo')     punchUndo();
     else if (a==='punch-edit')     punchEdit(t.dataset.date);

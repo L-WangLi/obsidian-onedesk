@@ -13,7 +13,7 @@
 - **项目**：每个项目的下一步和进展时间线，以及所有项目合并的总时间线。[详细介绍 →](docs/zh-CN/projects.md)
 - **时间**：一键打卡，计划与实际对比，黄金时段利用率等作息指标。[详细介绍 →](docs/zh-CN/time.md)
 - **写作**：从你读的论文里提炼术语和句式，每天练一张卡片；公开写作的进度管理。[详细介绍 →](docs/zh-CN/writing.md)
-- **英语**：用你昨天做过的事出题的每日口语练习。[详细介绍 →](docs/zh-CN/english.md)
+- **英语**：4 周句型计划（按意群练）和用你昨天做过的事出题的每日口语练习。[详细介绍 →](docs/zh-CN/english.md)
 - **阅读**：读书笔记的统计和最近的想法。[详细介绍 →](docs/zh-CN/reading.md)
 - **文件**：三栏浏览、预览和编辑整个 vault。[详细介绍 →](docs/zh-CN/files.md)
 
@@ -50,7 +50,7 @@ OneDesk 需要 [Dataview](https://github.com/blacksmithgu/obsidian-dataview) 插
 | [首页](docs/zh-CN/dashboard.md) | 为什么随手记录能帮你专注；今日任务、随手捕获、问题、快速入口、日记、碎碎念、复盘 |
 | [文献](docs/zh-CN/literature.md) | 研究生文献管理：Gap 合集、对比矩阵、标签合集、综述草稿、Zotero 同步 |
 | [项目](docs/zh-CN/projects.md) · [文件](docs/zh-CN/files.md) | 项目笔记与时间线；vault 浏览器 |
-| [时间](docs/zh-CN/time.md) · [写作](docs/zh-CN/writing.md) · [英语](docs/zh-CN/english.md) · [阅读](docs/zh-CN/reading.md) | 打卡与作息；写作练习；口语日课；读书笔记 |
+| [时间](docs/zh-CN/time.md) · [写作](docs/zh-CN/writing.md) · [英语](docs/zh-CN/english.md) · [阅读](docs/zh-CN/reading.md) | 打卡与作息；写作练习；句型与口语日课；读书笔记 |
 
 ## 笔记始终属于你
 
