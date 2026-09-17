@@ -316,9 +316,12 @@ test("plugin still loads on an Obsidian without AbstractInputSuggest", async () 
 // ── punch clock across midnight ──────────────────────────────────
 function extractFunctions(names) {
   return names.map(name => {
-    const start = dashboardSource.indexOf(`function ${name}(`);
+    let start = dashboardSource.indexOf(`function ${name}(`);
     assert.ok(start >= 0, name);
-    let depth = 0, i = dashboardSource.indexOf("{", start);
+    if (dashboardSource.slice(start - 6, start) === "async ") start -= 6;
+    // the body starts after the parameter list, which may hold a `= {}` default
+    let depth = 0, i = start + dashboardSource.slice(start).search(/\)\s*\{/);
+    i = dashboardSource.indexOf("{", i);
     for (; i < dashboardSource.length; i++) {
       if (dashboardSource[i] === "{") depth++;
       else if (dashboardSource[i] === "}" && --depth === 0) break;
@@ -413,4 +416,26 @@ test("the Time tab counts from counted spans and draws from spans", () => {
   }
   assert.match(render, /const tCats = catMins\(tCounted\)/);
   assert.match(dashboardSource, /const \{ counted \} = punchDaySpans\(_pd, i\);/);
+});
+
+// ── tasks planned the night before ───────────────────────────────
+test("a task added as 明天 is dated tomorrow, so it is not overdue the next day", async () => {
+  let note = "## Learning\n";
+  const ctx = vm.createContext({
+    pad: n => String(n).padStart(2, "0"),
+    app: { vault: { read: async () => note, modify: async (_f, text) => { note = text; } } },
+    ensureTodayDaily: async () => ({}), taskProjectById: () => null,
+    setTimeout: () => 0, loadVaultTasks() {}, loadActiveProjectBoard() {},
+  });
+  vm.runInContext(
+    "function dateKey(date = new Date()) { const d = new Date(date); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }" +
+    "function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }" +
+    extractFunctions(["todayStr", "tomorrowStr", "addVaultTask"]), ctx);
+  await vm.runInContext("addVaultTask('Learning', 'plan tomorrow', { when: 'tomorrow' })", ctx);
+  await vm.runInContext("addVaultTask('Learning', 'do tonight', {})", ctx);
+  const [today, tomorrow] = vm.runInContext("[todayStr(), tomorrowStr()]", ctx);
+  assert.match(note, new RegExp(`- \\[ \\] plan tomorrow #Learning \\[when:: ${tomorrow}\\]`));
+  assert.match(note, new RegExp(`- \\[ \\] do tonight #Learning \\[when:: ${today}\\]`));
+  assert.ok(dashboardSource.includes('data-action="toggle-add-when"'));
+  assert.ok(dashboardSource.includes("when:_addTaskTomorrow?'tomorrow':'today'"));
 });

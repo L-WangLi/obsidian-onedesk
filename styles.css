@@ -84,6 +84,9 @@
 #db26 .task-add-input{flex:1;width:100%;border:1px solid var(--border);background:var(--bg);border-radius:6px;padding:6px 10px;font-size:14px;color:var(--text);outline:none;font-family:inherit}
 #db26 .task-add-input:focus{border-color:var(--border2)}
 #db26 .task-add-input::placeholder{color:var(--text4)}
+#db26 .task-when-toggle{flex:0 0 auto;border:.5px solid var(--border);background:var(--bg2);color:var(--text3);border-radius:6px;padding:5px 9px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+#db26 .task-when-toggle:hover{color:var(--text)}
+#db26 .task-when-toggle.on{background:var(--blue-bg);color:var(--blue-text);border-color:transparent}
 #db26 .vt-dot{width:11px;height:11px;min-width:11px;padding:0;border:0;border-radius:50%;flex-shrink:0;cursor:pointer;margin-top:3px;box-shadow:0 0 0 2px var(--bg2)}
 #db26 .vt-dot:hover{transform:scale(1.18)}
 #db26 .vt-inline-edit{flex:1;border:1px solid var(--border2);background:var(--bg2);border-radius:5px;padding:2px 6px;font-size:14px;color:var(--text);outline:none;font-family:inherit}

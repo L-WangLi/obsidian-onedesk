@@ -213,6 +213,7 @@ dv.container.innerHTML = `<div id="db26">
             <button id="task-context-dot" type="button" data-action="cycle-add-context" class="task-area-dot" title="Switch area or project" aria-label="Switch area or project"></button>
             <select id="task-context-select" class="task-context-select" aria-label="Pick area or project"></select>
             <input id="task-add-input" class="task-add-input" placeholder="">
+            <button id="task-when-toggle" type="button" data-action="toggle-add-when" class="task-when-toggle" title="Plan it for today or tomorrow">今天</button>
           </div>
           <div id="task-list-single"></div>
         </div>
@@ -1147,6 +1148,14 @@ let ACTIVE_PROJECT_BOARD_IDS = PB.ids || FALLBACK_PROJECT_NOTE_TARGETS.map(p => 
 const PROJECT_BOARD_COLORS = PB.colors || {};
 const TASK_CONTEXT_SHORT_LABELS = PB.shortLabels || {};
 let _addTaskArea = LS('add_task_area','Learning');
+// Today / tomorrow for the next task typed into Today. Not remembered: every visit starts at today.
+let _addTaskTomorrow = false;
+function toggleAddTaskWhen(){
+  _addTaskTomorrow = !_addTaskTomorrow;
+  const b = $('task-when-toggle');
+  if (b) { b.textContent = _addTaskTomorrow ? '明天' : '今天'; b.classList.toggle('on', _addTaskTomorrow); }
+  $('task-add-input')?.focus();
+}
 let _addTaskContext = LS('add_task_context','personal:Learning');
 let _projectActivitySelected = LS('project_activity_selected', ACTIVE_PROJECT_BOARD_IDS[0] || '');
 let _projectRollupPeriod = String(LS('project_rollup_period','30'));
@@ -1728,7 +1737,7 @@ function initTaskInputs(){
   const ti=$('task-add-input');
   if(ti && !ti.dataset.bound){ ti.dataset.bound='1';
     ti.placeholder='';
-    ti.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=ti.value.trim(); if(v){ const target=currentAddTaskTarget();addVaultTask(target.area,v,{projectId:target.projectId});ti.value=''; } } });
+    ti.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=ti.value.trim(); if(v){ const target=currentAddTaskTarget();addVaultTask(target.area,v,{projectId:target.projectId,when:_addTaskTomorrow?'tomorrow':'today'});ti.value=''; } } });
   }
   const context=$('task-context-select');
   if(context&&!context.dataset.bound){context.dataset.bound='1';context.addEventListener('change',()=>setAddTaskContext(context.value));}
@@ -1743,7 +1752,8 @@ async function addVaultTask(area, text, options={}) {
   const re = new RegExp('^##\\s+.*\\b'+area+'\\b','i');
   let headingIdx = lines.findIndex(l => re.test(l));
   
-  const whenValue=todayStr();   // new tasks are always for today
+  // Written into today's note either way; a task planned the night before is due tomorrow, not overdue.
+  const whenValue=options.when==='tomorrow'?tomorrowStr():todayStr();
   const projectId=Object.prototype.hasOwnProperty.call(options,'projectId')?options.projectId:'';
   const project=taskProjectById(projectId);
   let meta=` [when:: ${whenValue}]`;
@@ -5642,6 +5652,7 @@ _root.addEventListener('click', e => {
     else if (a==='attach-task-ref')     attachTaskRef(t.dataset.path,t.dataset.line);
     else if (a==='remove-task-ref')     removeTaskRef(t.dataset.path,t.dataset.line,t.dataset.ref);
     else if (a==='cycle-add-context')   cycleAddTaskContext();
+    else if (a==='toggle-add-when')     toggleAddTaskWhen();
     else if (a==='cycle-task-context')  cycleTaskContext(t.dataset.path,t.dataset.line,t.dataset.current);
     else if (a==='schedule-task')       scheduleTask(t.dataset.path,t.dataset.line);
     else if (a==='project-activity-select') { _projectActivitySelected=t.dataset.project; LSS('project_activity_selected',_projectActivitySelected); loadProjectActivity(); }
