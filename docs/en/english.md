@@ -23,9 +23,10 @@ Chunks rather than single words. Each pattern comes in **four variations** (for 
 | 4 | Cause and hypothesis | TOEFL · academic discussion | If I had … would have · That's why · As long as · The more … the more · It's worth …ing |
 
 - **Monday to Friday** bring the next unfinished pattern; a missed day postpones it rather than skipping it. **Saturday** mixes ten sentences from the week's patterns, shown in Chinese only. **Sunday** is off, though you can still practise. After all twenty, a second round starts from the one practised longest ago.
-- **How**: read the Chinese and say it aloud first → type it and press Enter to save and reveal the reference → compare; the meaning matters, not the exact words. **练完了** marks the pattern done.
+- **How**: read the Chinese and say it aloud first → type it and press Enter to save and reveal the reference → compare and mark it **✓ 对了** (right) or **✗ 有错** (wrong); a sentence you only said aloud can be marked too. The meaning matters, not the exact words. **练完了** marks the pattern done.
+- **Mistakes**: a sentence marked wrong comes back after **1, 3, 7 and 14 days** in a **错句复习** card at the top of the tab, practised the same way. Right pushes it further out, wrong starts it over at one day, and four right in a row retire it. The pattern card shows how many are still being learnt and how many are retired.
 - ‹ › browses the other patterns.
-- Practice goes into the same English log, one line per pattern with your sentences under it: `- Day 3 · 句型 · be going to / gonna · 10/10 · ✓`, `  - 中文 → English`.
+- Practice goes into the same English log, one line per pattern with your sentences under it: `- Day 3 · 句型 · be going to / gonna · 10/10 · ✓`, `  - 中文 → English · ✗`. Review timing is worked out from these lines; there is no other file.
 - The sentences are original, written in those registers around a graduate student's research and daily life; nothing is quoted from shows or exam papers.
 
 ## Speaking

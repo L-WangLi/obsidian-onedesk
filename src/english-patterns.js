@@ -473,19 +473,73 @@ const enPatternWeek = i => Math.floor(i / 5);
 // The practice log line for a pattern: "- Day 3 · 句型 · be going to / gonna · 4/10 · ✓".
 const EN_PATTERN_TAG = '句型';
 const EN_REVIEW_TAG = '句型复习';
-function enPatternHead(dayNo, tag, title, count, done) {
-  return '- Day ' + dayNo + ' · ' + tag + ' · ' + title + ' · ' + count + '/10' + (done ? ' · ✓' : '');
+const EN_MISTAKE_TAG = '错句复习';
+function enPatternHead(dayNo, tag, title, count, done, total = 10) {
+  return '- Day ' + dayNo + ' · ' + tag + ' · ' + title + ' · ' + count + '/' + total + (done ? ' · ✓' : '');
 }
 function enParsePatternHead(line) {
-  const m = String(line).match(/^- Day \d+ · (句型复习|句型) · (.+?) · (\d+)\/10( · ✓)?\s*$/);
-  return m ? { tag: m[1], title: m[2], count: +m[3], done: !!m[4] } : null;
+  const m = String(line).match(/^- Day \d+ · (错句复习|句型复习|句型) · (.+?) · (\d+)\/(\d+)( · ✓)?\s*$/);
+  return m ? { tag: m[1], title: m[2], count: +m[3], total: +m[4], done: !!m[5] } : null;
 }
 
-// One practised sentence, kept under its pattern's head line: "  - 中文 → English".
-function enPatternSentence(zh, en) { return '  - ' + zh + ' → ' + en; }
+// One practised sentence under its head line: "  - 中文 → English", with " · ✓" or " · ✗"
+// once you have compared it with the reference. Said aloud but not typed: "  - 中文 → — · ✗".
+function enPatternSentence(zh, en, mark) { return '  - ' + zh + ' → ' + (en || '—') + (mark ? ' · ' + mark : ''); }
 function enParsePatternSentence(line) {
-  const m = String(line).match(/^\s+- (.+?) → (.+)$/);
-  return m ? { zh: m[1], en: m[2] } : null;
+  const m = String(line).match(/^\s+- (.+?) → (.+?)(?: · ([✓✗]))?\s*$/);
+  return m ? { zh: m[1], en: m[2] === '—' ? '' : m[2], mark: m[3] || '' } : null;
+}
+
+// ── mistakes ──
+// A sentence marked ✗ comes back after 1 day; each ✓ since the last ✗ pushes the next
+// review further out (3, 7, 14 days), and the fourth ✓ in a row retires it. Another ✗
+// starts it over. The state is replayed from the log, so there is nothing else to keep.
+const EN_MISTAKE_STEPS = [1, 3, 7, 14];
+
+function enPatternIndex() {
+  const byZh = new Map();
+  EN_PATTERNS.forEach((p, i) => p.ex.forEach((e, k) => byZh.set(e[1], [i, k])));
+  return byZh;
+}
+
+function enAddDays(date, n) {
+  const d = new Date(date + 'T12:00'); d.setDate(d.getDate() + n);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// → { due: [{ pi, k, zh, step, since }], waiting, mastered } for `date`.
+// What is due is decided from the marks before `date`, so answering a sentence today does
+// not make it vanish from today's review; the counts include today's marks.
+function enMistakeQueue(days, date) {
+  const byZh = enPatternIndex();
+  const events = new Map();   // zh → [[date, mark]], oldest first
+  for (const d of [...days].sort((a, b) => a.date.localeCompare(b.date))) {
+    for (const l of d.lines) {
+      const s = enParsePatternSentence(l);
+      if (!s || !s.mark || !byZh.has(s.zh)) continue;
+      if (!events.has(s.zh)) events.set(s.zh, []);
+      events.get(s.zh).push([d.date, s.mark]);
+    }
+  }
+  // ✓ in a row since the last ✗, or -1 if never wrong
+  const state = list => {
+    const w = list.map(e => e[1]).lastIndexOf('✗');
+    return w < 0 ? null : { step: list.length - 1 - w, since: list[w][0], last: list[list.length - 1][0] };
+  };
+  const due = [];
+  let waiting = 0, mastered = 0;
+  for (const [zh, list] of events) {
+    const now = state(list);
+    if (!now) continue;
+    if (now.step >= EN_MISTAKE_STEPS.length) mastered++; else waiting++;
+    const was = state(list.filter(e => e[0] < date));
+    if (was && was.step < EN_MISTAKE_STEPS.length && enAddDays(was.last, EN_MISTAKE_STEPS[was.step]) <= date) {
+      const [pi, k] = byZh.get(zh);
+      due.push({ pi, k, zh, step: was.step, since: was.since });
+    }
+  }
+  due.sort((a, b) => a.since.localeCompare(b.since) || a.pi - b.pi || a.k - b.k);
+  return { due, waiting, mastered };
 }
 
 // Sorted log days (newest first, as enAllDays returns them) → which patterns are finished and when.
