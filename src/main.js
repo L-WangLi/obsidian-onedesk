@@ -106,11 +106,9 @@ class OneDeskView extends ItemView {
         "请在「设置 → 第三方插件」中安装并启用 Dataview，然后运行命令「OneDesk: 刷新」。");
       return;
     }
-    if (dataview.index && !dataview.index.initialized) {
-      renderMessage(mount, "正在等待 Dataview 建立索引…", "索引完成后会自动显示。");
-      plugin.refreshWhenIndexed();
-      return;
-    }
+    // Draw now even if Dataview is still indexing — on a large vault or an older phone that
+    // takes seconds. The parts that read its index refresh themselves when it is done.
+    const indexing = !!(dataview.index && !dataview.index.initialized);
 
     const child = this.addChild(new Component());
     this.renderChild = child;
@@ -121,8 +119,9 @@ class OneDeskView extends ItemView {
       page: path => dataview.page(path),
     };
     try {
-      await runDashboard(dv, this.app, plugin.dashboardConfig(), Notice);
+      const dashboard = await runDashboard(dv, this.app, plugin.dashboardConfig(), Notice);
       plugin.leaveDisabledTab(mount);
+      if (indexing && dashboard && dashboard.onIndexReady) plugin.whenIndexed(child, () => dashboard.onIndexReady());
     } catch (error) {
       console.error("[onedesk] render failed", error);
       mount.empty();
@@ -141,10 +140,20 @@ module.exports = class OneDeskPlugin extends Plugin {
   async onload() {
     this.configFile = null;
     this.lastConfigWrite = "";
-    await this.loadSettings();
+    const cached = await this.loadSettings();
     // The vault index (needed to find CONFIG_FILE) is only complete once layout is ready.
+    // Reading the file then can take a second while Dataview indexes, so a device that has
+    // run before starts from its cached copy and redraws only if the file says otherwise.
     this.ready = new Promise(resolve => {
-      this.app.workspace.onLayoutReady(() => this.loadVaultConfig().finally(resolve));
+      this.whenLayoutReady(() => {
+        const loading = this.loadVaultConfig();
+        if (!cached) return loading.finally(resolve);
+        resolve();
+        const before = JSON.stringify(this.sharedSettings());
+        loading.then(() => {
+          if (JSON.stringify(this.sharedSettings()) !== before) this.refreshViews();
+        });
+      });
     });
 
     this.registerView(VIEW_TYPE, leaf => new OneDeskView(leaf, this));
@@ -187,33 +196,58 @@ module.exports = class OneDeskPlugin extends Plugin {
     const onConfigChange = file => {
       if (file.name === CONFIG_FILE) this.scheduleConfigReload();
     };
-    this.registerEvent(this.app.vault.on("modify", onConfigChange));
-    this.registerEvent(this.app.vault.on("create", onConfigChange));
-    this.registerEvent(this.app.vault.on("delete", onConfigChange));
-    this.registerEvent(this.app.vault.on("rename", onConfigChange));
+    // Registered after layout is ready: while the vault loads, every existing file fires "create".
+    this.app.workspace.onLayoutReady(() => {
+      this.registerEvent(this.app.vault.on("modify", onConfigChange));
+      this.registerEvent(this.app.vault.on("create", onConfigChange));
+      this.registerEvent(this.app.vault.on("delete", onConfigChange));
+      this.registerEvent(this.app.vault.on("rename", onConfigChange));
+    });
     this.register(() => window.clearTimeout(this.configTimer));
 
-    this.app.workspace.onLayoutReady(async () => {
+    this.whenLayoutReady(async () => {
       await this.ready;
       if (!this.settings.openOnStartup) return;
-      const timer = window.setTimeout(() => this.openDashboard(true), 350);
+      // A restored tab only needs revealing; a new one waits for the workspace to settle.
+      const delay = this.app.workspace.getLeavesOfType(VIEW_TYPE).length ? 0 : 350;
+      const timer = window.setTimeout(() => this.openDashboard(true), delay);
       this.register(() => window.clearTimeout(timer));
     });
+  }
+
+  // Like workspace.onLayoutReady, but without queueing behind other plugins' callbacks,
+  // which can hold the dashboard back for a second after the layout is actually there.
+  whenLayoutReady(fn) {
+    const workspace = this.app.workspace;
+    if (workspace.layoutReady) return void fn();
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      window.clearInterval(poll);
+      fn();
+    };
+    const poll = window.setInterval(() => workspace.layoutReady && run(), 30);
+    this.register(() => window.clearInterval(poll));
+    workspace.onLayoutReady(run);
   }
 
   dataviewApi() {
     return this.app.plugins.getPlugin("dataview")?.api || null;
   }
 
-  refreshWhenIndexed() {
-    if (this.waitingForIndex) return;
-    this.waitingForIndex = true;
+  // Runs `fn` once Dataview's index is ready, for as long as `owner` (one render) is alive.
+  whenIndexed(owner, fn) {
+    const dataview = this.dataviewApi();
+    if (!dataview || !dataview.index || dataview.index.initialized) return fn();
+    let done = false;
     const ref = this.app.metadataCache.on("dataview:index-ready", () => {
+      if (done) return;
+      done = true;
       this.app.metadataCache.offref(ref);
-      this.waitingForIndex = false;
-      this.refreshViews();
+      fn();
     });
-    this.registerEvent(ref);
+    owner.registerEvent(ref);
   }
 
   // ── settings ─────────────────────────────────────────────────
@@ -227,6 +261,7 @@ module.exports = class OneDeskPlugin extends Plugin {
     const v = s.vault;
     const ll = v.LIFELOG || (v.INBOX || "Intake") + "/Log";
     LIFE_LOG_DIR = ll.endsWith("/") ? ll : ll + "/";
+    return Object.keys(data).length > 0;
   }
 
   sharedSettings() {
@@ -264,6 +299,9 @@ module.exports = class OneDeskPlugin extends Plugin {
     }
     try {
       await this.loadSettings(JSON.parse(await this.app.vault.read(file)));
+      // Keep the local cache current so the next start can draw before this file is read.
+      const shared = this.sharedSettings();
+      if (JSON.stringify(await this.loadData()) !== JSON.stringify(shared)) await this.saveData(shared);
     } catch (error) {
       console.error(`[onedesk] could not read ${file.path}`, error);
       new Notice(`OneDesk：${file.path} 不是有效的 JSON，暂时沿用插件内的设置`);

@@ -73,13 +73,49 @@ test("view explains a missing Dataview instead of failing", async () => {
   assert.match(view.contentEl.allText(), /需要 Dataview/);
 });
 
-test("view waits for the Dataview index", async () => {
-  const app = makeApp({}, { dataview: { index: { initialized: false }, pages: () => [], page: () => null } });
+test("a device with cached settings draws first, then redraws if onedesk.json differs", async () => {
+  const app = makeApp({ "onedesk.json": JSON.stringify({ me: { NAME: "FromFile" } }) });
+  const { Plugin } = loadMain(source);
+  const plugin = new Plugin(app, { id: "onedesk" });
+  plugin.data = { me: { NAME: "Cached" } };
+  let redraws = 0;
+  plugin.refreshViews = async () => { redraws++; };
+  await plugin.onload();
+  for (const cb of app.layoutCallbacks) cb();
+  await plugin.ready;
+  assert.equal(plugin.settings.me.NAME, "Cached");
+  for (let i = 0; i < 10; i++) await new Promise(r => setImmediate(r));
+  assert.equal(plugin.settings.me.NAME, "FromFile");
+  assert.equal(redraws, 1);
+  assert.equal(plugin.saved.me.NAME, "FromFile");
+});
+
+test("vault file events are only watched after layout is ready", async () => {
+  const app = makeApp();
+  const watched = [];
+  app.vault.on = name => { watched.push(name); return {}; };
+  const { Plugin } = loadMain(source);
+  const plugin = new Plugin(app, { id: "onedesk" });
+  await plugin.onload();
+  assert.deepEqual(watched, []);
+  for (const cb of app.layoutCallbacks) cb();
+  assert.ok(watched.includes("create"));
+});
+
+test("index-dependent refresh runs once Dataview finishes indexing", async () => {
+  const index = { initialized: false };
+  const app = makeApp({}, { dataview: { index, pages: () => [], page: () => null } });
   const plugin = await startPlugin(app);
-  const view = plugin.viewFactory({ app });
-  await view.render();
-  assert.match(view.contentEl.allText(), /等待 Dataview/);
-  assert.equal(plugin.waitingForIndex, true);
+  let calls = 0;
+  const owner = { registerEvent() {} };
+  plugin.whenIndexed(owner, () => calls++);
+  assert.equal(calls, 0);
+  app.metadataCache.trigger("dataview:index-ready");
+  app.metadataCache.trigger("dataview:index-ready");
+  assert.equal(calls, 1);
+  index.initialized = true;
+  plugin.whenIndexed(owner, () => calls++);
+  assert.equal(calls, 2);
 });
 
 test("disabled modules are flagged on the mount", async () => {

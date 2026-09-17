@@ -80,7 +80,12 @@ export function makeApp(files = {}, { dataview = null } = {}) {
       on: () => ({}),
     },
     workspace: { onLayoutReady: cb => layoutCallbacks.push(cb), getLeavesOfType: () => [] },
-    metadataCache: { on: () => ({}), offref() {} },
+    metadataCache: {
+      handlers: new Map(),
+      on(name, fn) { const ref = { name, fn }; this.handlers.set(ref, true); return ref; },
+      offref(ref) { this.handlers.delete(ref); },
+      trigger(name) { for (const ref of [...this.handlers.keys()]) if (ref.name === name) ref.fn(); },
+    },
     plugins: { getPlugin: id => (id === "dataview" && dataview ? { api: dataview } : null) },
   };
   return app;
@@ -99,7 +104,7 @@ export function loadMain(source, extraGlobals = {}) {
   };
   const context = vm.createContext({
     module, exports: module.exports, require: requireMock, console, Event: class {},
-    window: { setTimeout: () => 0, clearTimeout() {} },
+    window: { setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {} },
     ...extraGlobals,
   });
   vm.runInContext(source + "\n;globalThis.__runDashboard = runDashboard; globalThis.__sample = onedeskSampleFiles;", context);

@@ -812,3 +812,40 @@ ul.life-log-note-timeline .ll-body{line-height:1.6;color:var(--text-normal);over
 #db26 .lit-topic-h{display:flex;align-items:center;gap:8px;margin:14px 0 2px;font-size:12px;font-weight:600;letter-spacing:.4px;color:var(--blue-text)}
 #db26 .lit-topic-h span{font-weight:400;color:var(--text4)}
 #db26 .lit-cite{color:var(--text4);white-space:nowrap}
+
+/* ── Phone ─────────────────────────────────────────────────────
+   One column everywhere; the banner and heatmap only on the home tab, so other tabs
+   start at their content. Zotero sync needs the desktop app, so its button goes. */
+@media(max-width:600px){
+  #db26 .hero{height:112px}
+  #db26 .hero-overlay{padding:12px 16px 11px}
+  #db26 .greeting{font-size:19px}
+  #db26 .date-line{font-size:12px}
+  #db26 .hero-quote{display:none}
+  #db26 .heatmap-strip{padding:8px 12px 9px}
+  #db26 .hm-year{display:none}
+  #db26 .hm-months{padding-left:0}
+  #db26 .hm-months span{font-size:10px}
+  #db26:has(#view-dashboard:not(.active)) :is(.hero,.heatmap-strip){display:none}
+  #db26 .nav{padding:0 6px;position:sticky;top:0;z-index:5}
+  #db26 .nav-item{padding:10px 10px;font-size:14px}
+
+  #db26 .layout{grid-template-columns:1fr}
+  #db26 .main{border-right:0;padding:10px 12px 4px}
+  #db26 .sidebar{padding:4px 12px 16px;background:none}
+  #db26 .two-col{grid-template-columns:1fr}
+  #db26 .two-col>*{min-width:0}
+  #db26 .card{padding:12px}
+  #db26 .punch-row{gap:6px}
+  #db26 .punch-btn{padding:6px 11px}
+  #db26 .punch-sum{margin-inline-start:0;flex-basis:100%;white-space:normal}
+
+  #db26 .portfolio-head{flex-wrap:wrap;gap:8px}
+  #db26 #lit-synced{display:none}
+  #db26 .proj-view-grid{grid-template-columns:1fr;padding:12px}
+
+  #db26 .hz-lrow{grid-template-columns:40px minmax(60px,1fr) 40px 44px;gap:6px}
+  #db26 .hz-lr,#db26 .hz-lb{display:none}
+  #db26 .hz-axis-sub{margin-inline-start:50px;margin-inline-end:100px}
+}
+body.is-mobile #db26 #lit-sync-btn{display:none}

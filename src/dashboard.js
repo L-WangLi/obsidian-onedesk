@@ -124,6 +124,10 @@ const _bannerSrc = _bannerFile
 // The previous scoring counted manuscript_words / papers_read / exercise /
 // speech_practice, which were non-zero on 6 / 3 / 4 / 12 days out of 76 — the
 // map was blank almost everywhere.
+//
+// Computed after the page is drawn (and again once Dataview has indexed), so a slow
+// index or a long punch log never holds up first paint.
+async function computeVaultHeatmap() {
 const _punchMins = {};
 try {
   const _pd = await punchAllDays();
@@ -156,6 +160,7 @@ try {
 } catch (e) { console.error('heatmap', e); }
 
 window._db26_vaultHM = _vaultHM;
+}
 
 // Keep long-running timers tied to the Dataview/Obsidian component lifecycle.
 const _setManagedInterval = (fn, delay) => {
@@ -1293,7 +1298,6 @@ function loadVaultTasks() {
   const backlog=open.filter(t=>{const d=taskPlannedDay(t);return !d||d>=tomorrow;});
   const doneToday=done.filter(t=>taskCompletionDay(t)===today);
   const doneYesterday=done.filter(t=>taskCompletionDay(t)===yesterday);
-  const recentDone=done.filter(t=>{const d=taskCompletionDay(t);return d<yesterday&&d>=dateKey(addDays(new Date(),-7));});
   const section=(label,items,renderer,isOpen=true)=>{
     if(!items.length) return '';
     return `<details class="today-section"${isOpen?' open':''}><summary class="vt-section-h">${label} · ${items.length}</summary>${items.map(renderer).join('')}</details>`;
@@ -1304,7 +1308,6 @@ function loadVaultTasks() {
   html+=section('Backlog',backlog,renderOpen,false);
   html+=section('Done today',doneToday,renderDone,true);
   html+=section('Done yesterday',doneYesterday,renderDone,false);
-  html+=section('Done · last 7 days',recentDone,renderDone,false);
   html+=section("Won't do",cancelled,renderDone,false);
   if(!html) html=`<div class="vt-empty" style="padding:10px 4px;color:var(--text4);font-size:13px">${scanFailed ? 'Task index unavailable — reload Obsidian.' : 'No tasks in this view.'}</div>`;
   box.innerHTML = html;
@@ -2090,6 +2093,7 @@ const zotOwn = c => String(c || '').replace(/🔤[\s\S]*?🔤/g, '').trim();
 // Dataview evaluates this file through `new Function`, where the module-scoped
 // `require` isn't always in scope — fall back to the one Electron puts on window.
 function zotRequire(mod) {
+  if (app.isMobile) throw new Error('No Node in this environment (needs Obsidian desktop)');
   const r = (typeof require === 'function') ? require
           : (typeof window !== 'undefined' && typeof window.require === 'function') ? window.require
           : null;
@@ -5559,6 +5563,7 @@ function rememberDashboardScroll(){
   const host=dashboardScrollHost();
   if(host) dashboardLocalSet(DASHBOARD_SCROLL_PREFIX+_currentDashboardView,Number(host.scrollTop)||0);
 }
+let _knowledgeMapBuilt = false;
 function switchView(name,navEl) {
   rememberDashboardScroll();
   dv.container.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -5578,6 +5583,7 @@ function switchView(name,navEl) {
     else if (name==='time')       renderHealth();
     else if (name==='literature') loadLiterature();
     else if (name==='reading')    loadWeread();
+    else if (name==='knowledge' && !_knowledgeMapBuilt) { _knowledgeMapBuilt = true; initKnowledgeMap(); }
   } catch(e) { console.error('[db26 switchView] '+name+' failed:', e); }
   const savedY=Number(dashboardLocalGet(DASHBOARD_SCROLL_PREFIX+name,0))||0;
   [80,350].forEach(delay=>setTimeout(()=>{
@@ -5966,7 +5972,7 @@ loadStateFromVault().catch(e => console.error('[db26] background state load fail
   } catch (_e) {}
   // Phase 2: render everything that may depend on synced state
   _safe('initHero',         () => initHero());
-  _safe('buildHeatmap',     () => setTimeout(buildHeatmap, 0));
+  _safe('buildHeatmap',     () => { buildHeatmap(); computeVaultHeatmap().then(buildHeatmap); });
   _safe('loadVaultTasks',   () => loadVaultTasks());
   _safe('loadHomeProjectTimeline', () => loadHomeProjectTimeline().catch(e=>console.error('[db26 home project timeline]',e)));
   _safe('loadPool',         () => loadPool());
@@ -5975,10 +5981,10 @@ loadStateFromVault().catch(e => console.error('[db26] background state load fail
   _safe('loadCountdown',    () => loadCountdown());
   _safe('initTaskInputs',   () => initTaskInputs());
   _safe('buildQuickLinks',  () => buildQuickLinks());
-  _safe('loadWeread',       () => loadWeread());
-  _safe('initKnowledgeMap', () => initKnowledgeMap());
+  // Reading and Files load when their tab opens (switchView); the writing count, which only
+  // bumps today's frontmatter, waits until the first screen has settled.
   _safe('loadPunch', () => loadPunch());
-  _safe('loadWritingDelta', () => loadWritingDelta());
+  _safe('loadWritingDelta', () => setTimeout(() => loadWritingDelta().catch(e => console.error('[db26 writing delta]', e)), 4000));
   _safe('restoreDashboardView', () => setTimeout(restoreDashboardView, 0));
 }
 
@@ -5994,3 +6000,17 @@ try {
   window.addEventListener('beforeunload', _flushStateBeforeUnload);
   try { dv.component?.register(() => window.removeEventListener('beforeunload', _flushStateBeforeUnload)); } catch (_e2) {}
 }
+
+// Returned to the plugin view: Dataview may still be indexing when the page is first drawn;
+// once it finishes, refresh only the parts that read its index.
+return {
+  onIndexReady() {
+    invalidateDailyPages();
+    invalidateProjectTargets();
+    _safe('index: heatmap', () => computeVaultHeatmap().then(buildHeatmap));
+    _safe('index: tasks', () => loadVaultTasks());
+    _safe('index: project timeline', () => loadHomeProjectTimeline().catch(e => console.error('[db26 home project timeline]', e)));
+    if (_currentDashboardView === 'projects') _safe('index: projects', () => loadProjectActivity());
+    if (_currentDashboardView === 'literature') _safe('index: literature', () => loadLiterature());
+  },
+};
